@@ -1,63 +1,196 @@
-name: 🚀 Build & Push First ---> assistant-service image
+name: 🚀 Assistant Service - Docker Build & Push
+
+# ==========================================================
+# WORKFLOW TRIGGER
+# ==========================================================
+# Run manually from GitHub Actions.
+# This is a ONE-TIME Docker image build and push workflow.
+# It does NOT deploy to Render.
+# ==========================================================
 
 on:
   workflow_dispatch:
 
+# ==========================================================
+# PERMISSIONS
+# ==========================================================
+
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
+
+    name: 🐳 Build & Push Assistant Service
     runs-on: ubuntu-latest
 
     steps:
 
-      # ==============================
-      # 📥 Checkout Repository
-      # ==============================
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v3
+      # ======================================================
+      # STEP 1 - CHECKOUT REPOSITORY
+      # ======================================================
+      # Downloads your GitHub repository source code.
 
-      # ==============================
-      # 🔐 Docker Login
-      # ==============================
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # ======================================================
+      # STEP 2 - DISPLAY BUILD INFORMATION
+      # ======================================================
+
+      - name: 🧠 Display Build Information
+        run: |
+          echo "=========================================="
+          echo " ASSISTANT SERVICE DOCKER BUILD"
+          echo "=========================================="
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "Image: pythoncodelife/assistant-service"
+          echo "Platform: linux/amd64"
+          echo "Date: $(date)"
+          echo "=========================================="
+
+      # ======================================================
+      # STEP 3 - VERIFY REQUIRED FILES
+      # ======================================================
+      # Ensures Dockerfile and requirements.txt exist.
+
+      - name: 📂 Verify Project Files
+        run: |
+          echo "Checking required files..."
+
+          test -f Dockerfile || {
+            echo "ERROR: Dockerfile not found!"
+            exit 1
+          }
+
+          test -f requirements.txt || {
+            echo "ERROR: requirements.txt not found!"
+            exit 1
+          }
+
+          echo "Dockerfile found."
+          echo "requirements.txt found."
+
+      # ======================================================
+      # STEP 4 - SETUP DOCKER BUILDX
+      # ======================================================
+      # Enables Docker BuildKit and build cache support.
+
+      - name: ⚙️ Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ======================================================
+      # STEP 5 - LOGIN TO DOCKER HUB
+      # ======================================================
+      # Required GitHub Repository Secrets:
+      #
+      # DOCKERHUB_USERNAME
+      # DOCKERHUB_TOKEN
+      #
+      # Use your Docker Hub access token, not your password.
+
       - name: 🔐 Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ==============================
-      # 🧠 Show Info
-      # ==============================
-      - name: 🧠 Show Build Info
-        run: |
-          echo "🚀 Starting Docker Build for Assistant-Service"
-          echo "📦 Image: pythoncodelife/assistant-service:latest"
-          echo "🕒 Time: $(date)"
+      # ======================================================
+      # STEP 6 - GENERATE IMAGE TAGS
+      # ======================================================
+      # latest = Latest image
+      # sha    = Image linked to this Git commit
 
-      # ==============================
-      # 🐳 Build Docker Image
-      # ==============================
-      - name: 🐳 Build Docker Image
-        run: |
-          docker build -t pythoncodelife/assistant-service:latest .
+      - name: 🏷️ Generate Docker Image Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: pythoncodelife/assistant-service
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
 
-      # ==============================
-      # 📤 Push Docker Image
-      # ==============================
-      - name: 📤 Push Docker Image
-        run: |
-          docker push pythoncodelife/assistant-service:latest
+      # ======================================================
+      # STEP 7 - BUILD AND PUSH DOCKER IMAGE
+      # ======================================================
+      # Builds the image for linux/amd64.
+      #
+      # Dockerfile determines the Python version.
+      # requirements.txt determines Python dependencies.
+      #
+      # Push occurs only if the build succeeds.
 
-      # ==============================
-      # 🔍 Verify Image
-      # ==============================
-      - name: 🔍 Verify Image Push
+      - name: 🐳 Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+
+          platforms: linux/amd64
+
+          push: true
+
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+          # Reuse GitHub Actions Docker build cache.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ======================================================
+      # STEP 8 - VERIFY DOCKER HUB IMAGE
+      # ======================================================
+      # Checks whether the latest image is available.
+
+      - name: 🔍 Verify Docker Image
         run: |
-          echo "✅ Image pushed successfully!"
-          echo "🔗 DockerHub: https://hub.docker.com/r/pythoncodelife/assistant-service"
-      
-      # ==============================
-      # 🎉 Done
-      # ==============================
-      - name: 🎉 Done
+          echo "Checking pushed Docker image..."
+
+          docker buildx imagetools inspect \
+            pythoncodelife/assistant-service:latest
+
+          echo "Docker image verification completed."
+
+      # ======================================================
+      # STEP 9 - DISPLAY DOCKER HUB DETAILS
+      # ======================================================
+
+      - name: 📦 Display Published Image Details
         run: |
-          echo "🚀 assistant-service Docker Image Ready for Deployment"
+          echo "=========================================="
+          echo " DOCKER IMAGE PUBLISHED SUCCESSFULLY"
+          echo "=========================================="
+
+          echo "Docker Hub Repository:"
+          echo "https://hub.docker.com/r/pythoncodelife/assistant-service"
+
+          echo ""
+          echo "Latest Image:"
+          echo "pythoncodelife/assistant-service:latest"
+
+          echo ""
+          echo "Commit Image:"
+          echo "pythoncodelife/assistant-service:sha-${GITHUB_SHA}"
+
+          echo ""
+          echo "Platform: linux/amd64"
+
+          echo ""
+          echo "Ready for Render deployment."
+          echo "=========================================="
+
+      # ======================================================
+      # STEP 10 - FINAL SUCCESS
+      # ======================================================
+
+      - name: 🎉 Workflow Completed
+        run: |
+          echo "=========================================="
+          echo " SUCCESS: ASSISTANT SERVICE IMAGE READY"
+          echo "=========================================="
+          echo "Build: SUCCESS"
+          echo "Docker Login: SUCCESS"
+          echo "Docker Push: SUCCESS"
+          echo "Image Verification: SUCCESS"
+          echo "=========================================="

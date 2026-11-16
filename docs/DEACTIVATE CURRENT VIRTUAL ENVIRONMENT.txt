@@ -1,0 +1,108 @@
+
+# ==========================================================
+# STEP 1 - DEACTIVATE CURRENT VIRTUAL ENVIRONMENT
+# ==========================================================
+
+deactivate
+
+# ==========================================================
+# STEP 2 - DELETE OLD VIRTUAL ENVIRONMENT
+# ==========================================================
+
+Remove-Item -Recurse -Force .\venv
+
+# ==========================================================
+# STEP 3 - VERIFY OLD VENV IS DELETED
+# ==========================================================
+
+if (Test-Path .\venv) {
+    Write-Host "ERROR: Old venv still exists"
+    exit 1
+}
+else {
+    Write-Host "SUCCESS: Old venv deleted"
+}
+
+# ==========================================================
+# STEP 4 - CHECK PYTHON 3.14
+# ==========================================================
+
+py -3.14 --version
+
+# ==========================================================
+# STEP 5 - CREATE FRESH VIRTUAL ENVIRONMENT
+# ==========================================================
+
+py -3.14 -m venv venv
+
+# ==========================================================
+# STEP 6 - ACTIVATE NEW VIRTUAL ENVIRONMENT
+# ==========================================================
+
+.\venv\Scripts\Activate.ps1
+
+# ==========================================================
+# STEP 7 - VERIFY ACTIVE PYTHON VERSION AND LOCATION
+# ==========================================================
+
+python --version
+python -c "import sys; print(sys.executable)"
+
+# ==========================================================
+# STEP 8 - UPGRADE PIP
+# ==========================================================
+
+python -m pip install --upgrade pip
+
+# ==========================================================
+# STEP 9 - INSTALL PROJECT REQUIREMENTS
+# ==========================================================
+
+python -m pip install -r requirements.txt
+
+# ==========================================================
+# STEP 10 - VERIFY INSTALLED DEPENDENCIES
+# ==========================================================
+
+python -m pip check
+
+# ==========================================================
+# STEP 11 - DISPLAY IMPORTANT PACKAGE VERSIONS
+# ==========================================================
+
+python -m pip show numpy pandas scipy scikit-learn joblib Flask
+
+# ==========================================================
+# STEP 12 - VERIFY PROJECT ENVIRONMENT
+# ==========================================================
+
+python -c "import numpy, pandas, scipy, sklearn, flask; print('NumPy:', numpy.__version__); print('Pandas:', pandas.__version__); print('SciPy:', scipy.__version__); print('Scikit-learn:', sklearn.__version__); print('Flask:', flask.__version__ if hasattr(flask, '__version__') else 'Installed')"
+
+# ==========================================================
+# COMPLETED
+# ==========================================================
+
+Write-Host "=========================================="
+Write-Host "FRESH PYTHON VENV SETUP COMPLETED"
+Write-Host "=========================================="
+
+
+
+
+------------------------------
+
+# STEP 1 - Check dependency conflicts
+python -m pip check
+
+# STEP 2 - Test important package imports
+python -c "import numpy, scipy, sklearn, flask, joblib; print('All imports successful')"
+
+# STEP 3 - Check whether your project uses Pandas
+Get-ChildItem -Recurse -File -Filter *.py |
+Select-String -Pattern "import pandas|from pandas"
+
+# STEP 4 - Display complete installed packages
+python -m pip freeze
+
+
+

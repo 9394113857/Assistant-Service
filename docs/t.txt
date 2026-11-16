@@ -36,3 +36,62 @@ python -m pip freeze > requirements.txt
 Get-Content requirements.txt
 
 flask db upgrade
+
+
+==================================================
+
+# Open CMD and check all Python versions installed globally on your Windows machine ✅
+# Copy everything below and paste directly into Windows CMD:
+@echo off
+
+REM STEP 1 - Check default Python version
+echo.
+echo ===== STEP 1: Default Python Version =====
+python --version
+
+REM STEP 2 - Check Python Launcher version
+echo.
+echo ===== STEP 2: Python Launcher Version =====
+py --version
+
+REM STEP 3 - List all installed Python versions
+echo.
+echo ===== STEP 3: All Installed Python Versions =====
+py -0
+
+REM STEP 4 - Find all Python executable paths
+echo.
+echo ===== STEP 4: Python Executable Paths =====
+where python
+
+REM STEP 5 - Find Python Launcher path
+echo.
+echo ===== STEP 5: Python Launcher Path =====
+where py
+
+REM STEP 6 - Check default Python installation location
+echo.
+echo ===== STEP 6: Default Python Location =====
+python -c "import sys; print(sys.executable)"
+
+REM STEP 7 - Check default pip version
+echo.
+echo ===== STEP 7: Default Pip Details =====
+python -m pip --version
+
+REM STEP 8 - Check Python 3.11
+echo.
+echo ===== STEP 8: Python 3.11 =====
+py -3.11 --version
+py -3.11 -m pip --version
+
+REM STEP 9 - Check Python 3.14
+echo.
+echo ===== STEP 9: Python 3.14 =====
+py -3.14 --version
+py -3.14 -m pip --version
+
+REM STEP 10 - Completion
+echo.
+echo ===== PYTHON CHECK COMPLETED =====
+pause

@@ -1,0 +1,119 @@
+ASSISTANT-SERVICE — FINAL COMMANDS
+Project: E:\DevOps-Projects\assistant-service
+Shell: Git Bash / PowerShell (commands are labelled where relevant)
+
+============================================================
+1. GIT — CONFIRMED SUCCESSFUL WORKFLOW
+============================================================
+
+# Check current branch and working tree
+git status
+
+# Stage all project changes
+git add -A
+
+# Commit changes (edit the message as needed)
+git commit -m "Update assistant service"
+
+# Fetch latest remote changes
+git fetch origin
+
+# Rebase local main on the latest GitHub main
+git pull --rebase origin main
+
+# Push local main to GitHub
+git push origin main
+
+# Final verification
+git status
+
+Expected clean result:
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+
+NOTE:
+The fetch, rebase, push, and final status sequence was successful in this project.
+Only create a commit if git status shows changes to commit. If Git says
+there is nothing to commit, skip git add/commit and continue with fetch/rebase/push.
+
+============================================================
+2. PYTHON VIRTUAL ENVIRONMENT — PROJECT POWERSHELL
+============================================================
+
+# From the project folder
+py -3.14 -m venv venv
+
+# Activate the virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Confirm the active Python executable and version
+python --version
+python -c "import sys; print(sys.executable)"
+
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install project requirements
+python -m pip install -r requirements.txt
+
+# List installed packages
+python -m pip list
+
+# Check for broken or incompatible installed dependencies
+python -m pip check
+
+NOTE:
+Python 3.14.6 was confirmed active in this project's venv.
+The package list previously showed NumPy and Flask, but did not show
+Pandas, SciPy, or scikit-learn. Do not assume the ML dependencies are
+ready until the source-code and model-file checks below are reviewed.
+
+============================================================
+3. CHECK WHICH ML PACKAGES THE SOURCE CODE USES — POWERSHELL
+============================================================
+
+Get-ChildItem -Recurse -File -Filter *.py |
+Where-Object { $_.FullName -notmatch '\\venv\\|\\.git\\' } |
+Select-String -Pattern "import pandas|from pandas|import sklearn|from sklearn|import scipy|from scipy|import numpy|from numpy|joblib.load|pickle.load"
+
+============================================================
+4. FIND SERIALIZED MODEL FILES — POWERSHELL
+============================================================
+
+Get-ChildItem -Recurse -File |
+Where-Object { $_.Extension -in ".pkl", ".pickle", ".joblib" } |
+Select-Object FullName, Length
+
+============================================================
+5. CHECK IMPORTANT INSTALLED PACKAGES — POWERSHELL / GIT BASH
+============================================================
+
+python -m pip show Flask numpy pandas scipy scikit-learn joblib
+
+============================================================
+6. DOCKER / GITHUB ACTIONS — STATUS
+============================================================
+
+The Docker Hub build-and-push workflow is a separate step from the Git
+sync workflow. The earlier GitHub Actions build failed while installing
+requirements because the Docker image used Python 3.11 while
+requirements.txt pinned numpy==2.5.5.
+
+Do not treat the Docker build as successful yet. First:
+1. Review the output of sections 3 and 4.
+2. Confirm which Python version supports every required dependency.
+3. Check whether any saved ML models require a compatible scikit-learn version.
+4. Update and test requirements.txt and the Dockerfile.
+5. Then run the GitHub Actions workflow manually and verify the image
+   appears in Docker Hub.
+
+Docker Hub image intended for this project:
+pythoncodelife/assistant-service:latest
+
+The workflow is intended to build for linux/amd64 for Render compatibility.
+Render deployment is a separate workflow/step and has not been confirmed here.
+
+============================================================
+END
+============================================================

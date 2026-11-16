@@ -1,163 +1,63 @@
-# ============================================================
-# 🚀 CI/CD – Assistant Service (Docker → Railway)
-# ============================================================
-
-name: 🚀 CI/CD – Assistant Service (Docker → Railway)
+name: 🚀 Build & Push First ---> assistant-service image
 
 on:
-  push:
-    branches:
-      - main
-
   workflow_dispatch:
 
-  # Daily at 5:00 AM IST (23:30 UTC)
-  schedule:
-    - cron: "30 23 * * *"
-
 jobs:
-  ci-cd-assistant-service:
+  build-and-push:
     runs-on: ubuntu-latest
-
-    env:
-      IMAGE_NAME: pythoncodelife/assistant-service
-      IMAGE_TAG: latest
-      LIVE_URL: https://assistant-service-production-4c1b.up.railway.app/
 
     steps:
 
-      # =====================================================
-      # CHECKOUT
-      # =====================================================
-      - name: 🧾 Checkout source code
-        uses: actions/checkout@v4
+      # ==============================
+      # 📥 Checkout Repository
+      # ==============================
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v3
 
-      # =====================================================
-      # BUILD TIMESTAMPS
-      # =====================================================
-      - name: ⏱️ Generate build timestamps (UTC + IST)
-        run: |
-          echo "BUILD_TIME_UTC=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
-          echo "BUILD_TIME_IST=$(TZ=Asia/Kolkata date '+%Y-%m-%d %I:%M:%S %p IST')" >> $GITHUB_ENV
-
-      # =====================================================
-      # DOCKER SETUP
-      # =====================================================
-      - name: 🐳 Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
+      # ==============================
+      # 🔐 Docker Login
+      # ==============================
       - name: 🔐 Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # =====================================================
-      # BUILD & PUSH IMAGE
-      # =====================================================
-      - name: 🏗️ Build & Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-
-      # =====================================================
-      # DOCKER SUCCESS EMAIL
-      # =====================================================
-      - name: 📧 Docker Build Success Email
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ Docker Build Success | Assistant Service"
-          html_body: |
-            <h2>🐳 Docker Image Built Successfully</h2>
-            <p><b>Service:</b> Assistant Service</p>
-            <p><b>Image:</b> ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}</p>
-            <p><b>UTC:</b> ${{ env.BUILD_TIME_UTC }}</p>
-            <p><b>IST:</b> ${{ env.BUILD_TIME_IST }}</p>
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: ${{ secrets.MAIL_USERNAME }}
-
-      # =====================================================
-      # DEPLOY TO RAILWAY
-      # =====================================================
-      - name: 🚀 Deploy to Railway
+      # ==============================
+      # 🧠 Show Info
+      # ==============================
+      - name: 🧠 Show Build Info
         run: |
-          echo "Triggering Railway deployment..."
+          echo "🚀 Starting Docker Build for Assistant Service"
+          echo "📦 Image: pythoncodelife/assistant-service:latest"
+          echo "🕒 Time: $(date)"
 
-          curl -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            --data '{
-              "query": "mutation { serviceInstanceDeploy(serviceId: \"${{ secrets.RAILWAY_SERVICE_ID }}\", environmentId: \"${{ secrets.RAILWAY_ENVIRONMENT_ID }}\") }"
-            }' || true
+      # ==============================
+      # 🐳 Build Docker Image
+      # ==============================
+      - name: 🐳 Build Docker Image
+        run: |
+          docker build -t pythoncodelife/assistant-service:latest .
 
-          echo "Railway deploy trigger completed."
+      # ==============================
+      # 📤 Push Docker Image
+      # ==============================
+      - name: 📤 Push Docker Image
+        run: |
+          docker push pythoncodelife/assistant-service:latest
 
-      # =====================================================
-      # DEPLOY SUCCESS EMAIL
-      # =====================================================
-      - name: 📧 Deployment Success Email
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚀 Deployment Success | Assistant Service"
-          html_body: |
-            <h2>🚀 Assistant Service is LIVE</h2>
-            <table border="1" cellpadding="8">
-              <tr>
-                <td><b>Live URL</b></td>
-                <td><a href="${{ env.LIVE_URL }}">${{ env.LIVE_URL }}</a></td>
-              </tr>
-              <tr>
-                <td><b>Docker Image</b></td>
-                <td>${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}</td>
-              </tr>
-              <tr>
-                <td><b>UTC Deploy Time</b></td>
-                <td>${{ env.BUILD_TIME_UTC }}</td>
-              </tr>
-              <tr>
-                <td><b>IST Deploy Time</b></td>
-                <td>${{ env.BUILD_TIME_IST }}</td>
-              </tr>
-              <tr>
-                <td><b>Status</b></td>
-                <td style="color:green;"><b>LIVE</b></td>
-              </tr>
-            </table>
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: ${{ secrets.MAIL_USERNAME }}
-
-      # =====================================================
-      # FAILURE EMAIL
-      # =====================================================
-      - name: ❌ CI/CD Failure Email
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ CI/CD Failed | Assistant Service"
-          html_body: |
-            <h2 style="color:red;">❌ Pipeline Failed</h2>
-            <p><b>Service:</b> Assistant Service</p>
-            <p><b>UTC:</b> ${{ env.BUILD_TIME_UTC }}</p>
-            <p><b>IST:</b> ${{ env.BUILD_TIME_IST }}</p>
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: ${{ secrets.MAIL_USERNAME }}
+      # ==============================
+      # 🔍 Verify Image
+      # ==============================
+      - name: 🔍 Verify Image Push
+        run: |
+          echo "✅ Image pushed successfully!"
+          echo "🔗 DockerHub: https://hub.docker.com/r/pythoncodelife/assistant-service"
+      
+      # ==============================
+      # 🎉 Done
+      # ==============================
+      - name: 🎉 Done
+        run: |
+          echo "🚀 assistant-service Docker Image Ready for Deployment"

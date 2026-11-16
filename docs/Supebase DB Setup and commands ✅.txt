@@ -35,8 +35,8 @@ Where to copy from:-
 It will look like this 👇
 
 # URI:-
-# Method: Session pooler
-postgresql://postgres:Raghunadh_1992@db.fryjdlwzsqybqutvxkma.supabase.co:5432/postgres
+# Method: Direct Connection
+postgresql://postgres:Raghunadh_1992@db.njetkigxmpagamescuab.supabase.co:5432/postgres
 
 This is the ONLY URL you need everywhere.
 
@@ -44,7 +44,7 @@ This is the ONLY URL you need everywhere.
 You are inside VS Code → PowerShell.
 
 # 🔹 Command 1: Set DB URL (TEMP):-
-$env:DATABASE_URL="postgresql://postgres.fryjdlwzsqybqutvxkma:Raghunadh_1992@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+$env:DATABASE_URL="postgresql://postgres.njetkigxmpagamescuab:Raghunadh_1992@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=require"
 
 ✅ This sets DB URL only for this terminal session.
 
@@ -107,6 +107,9 @@ flask db upgrade
 
 # Remove DB URL
 Remove-Item Env:DATABASE_URL
+
+
+✅ Render Environment variables:-
 
 
 

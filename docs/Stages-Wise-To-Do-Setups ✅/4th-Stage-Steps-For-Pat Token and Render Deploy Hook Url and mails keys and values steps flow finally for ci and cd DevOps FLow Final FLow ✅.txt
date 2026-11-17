@@ -1,0 +1,18 @@
+# DevOps CI/CD Flow and Steps:-
+# 1.Render Dashboard:
+Select -> Existing Web-Service(Click on it):
+Settings -> Serach/find for: hook
+# Deploy Hook:-
+Your private URL to trigger a deploy for this server. Remember to keep this a secret.
+Regenerate hook:- (# Dont distub old becase cd and kesya nd values are timely in schedueld all in git woklopws dont distub them if any pleasee keppin mind before whatevr you do?)
+
+# Git Secrets:-
+Key:    RENDER_DEPLOY_HOOK
+Value:  <some-value>
+Clcik on: Add Secret Button
+# So the above will be used in the cd workflow to trigger specific git tag based avalable docker build releases releases for deployments accordinglyyyy and timelyyy okay.
+# So upto this new tag based deployments so server hook saved in git secrets but stil there continue remaining flow of Steps.
+==========================================================================================================================================================================
+
+
+

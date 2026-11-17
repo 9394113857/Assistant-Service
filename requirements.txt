@@ -23,7 +23,7 @@ psycopg-binary==3.3.9
 PyJWT==2.15.1
 python-dotenv==1.2.4
 requests==2.34.2
-scikit-learn==1.5.0
+scikit-learn==1.9.1
 scipy==1.18.1
 SQLAlchemy==2.1.8
 threadpoolctl==3.8.0

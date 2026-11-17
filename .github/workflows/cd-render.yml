@@ -6,21 +6,27 @@
 # Repository:
 # 9394113857/assistant-service
 #
+# Render URL:
+# https://assistant-service-g24j.onrender.com/
+#
 # DEPLOYMENT FEATURES:
-#   1. Manual deployment
-#   2. Daily scheduled deployment at 2 AM IST
-#   3. Latest Git tag detection
-#   4. Render deployment hook integration
-#   5. Application startup wait
-#   6. Application health verification
-#   7. Deployment success email
-#   8. Deployment failure email
+#
+# 1. Manual deployment
+# 2. Daily deployment at 2:00 AM IST
+# 3. Latest Git tag detection
+# 4. Default version: latest (when no tags exist)
+# 5. Render deployment hook integration
+# 6. Application startup wait
+# 7. Application health verification
+# 8. Deployment success email
+# 9. Deployment failure email
+# 10. UTC and IST deployment timestamps
 #
 # =====================================================
 
 name: 🚀 CD - Assistant Service Render
 
-run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.actor }}
+run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.ref_name }} | ${{ github.actor }}
 
 
 # =====================================================
@@ -64,7 +70,7 @@ jobs:
 
 
       # =====================================================
-      # STEP 1: CHECKOUT LATEST MAIN BRANCH
+      # STEP 1: CHECKOUT MAIN BRANCH
       # =====================================================
 
       - name: 📦 Checkout Repository
@@ -81,13 +87,18 @@ jobs:
       # STEP 2: DETECT DEPLOYMENT METADATA
       # =====================================================
       #
-      # If tags exist:
-      #   Use the latest version tag.
+      # If Git tags exist:
+      #   Use latest version tag.
       #
       # If no tags exist:
       #   Use latest.
       #
-      # Deployment always checks out main.
+      # Deployment source:
+      #   Latest main branch commit.
+      #
+      # NOTE:
+      #   VERSION is deployment metadata.
+      #   It does not check out the tagged commit.
       # =====================================================
 
       - name: 🏷️ Detect Deployment Metadata
@@ -109,6 +120,8 @@ jobs:
 
           echo "BRANCH=main" >> "$GITHUB_ENV"
 
+          echo "SERVICE_URL=https://assistant-service-g24j.onrender.com/" >> "$GITHUB_ENV"
+
           echo "DEPLOY_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
           echo "DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')" >> "$GITHUB_ENV"
@@ -118,6 +131,7 @@ jobs:
           echo "======================================"
 
           echo "Service: Assistant Service"
+          echo "URL: https://assistant-service-g24j.onrender.com/"
           echo "Version: $VERSION"
           echo "Commit: $(git rev-parse HEAD)"
           echo "Branch: main"
@@ -129,11 +143,11 @@ jobs:
       # STEP 3: TRIGGER RENDER DEPLOYMENT
       # =====================================================
       #
-      # Uses the repository secret:
+      # Required repository secret:
       # RENDER_DEPLOY_HOOK
       #
-      # Configure this secret with the Assistant Service
-      # Render deployment hook, not another service's hook.
+      # IMPORTANT:
+      # This must be the Assistant Service Render hook.
       # =====================================================
 
       - name: 🚀 Trigger Render Deployment
@@ -159,7 +173,7 @@ jobs:
             --request POST \
             "$RENDER_DEPLOY_HOOK")
 
-          echo "Render response HTTP: $HTTP_STATUS"
+          echo "Render HTTP Status: $HTTP_STATUS"
 
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]
           then
@@ -190,13 +204,19 @@ jobs:
       # STEP 5: APPLICATION HEALTH CHECK
       # =====================================================
       #
-      # Uses repository secret:
+      # Required repository secret:
       # APPLICATION_HEALTH_URL
+      #
+      # Set this to:
+      # https://assistant-service-g24j.onrender.com/
+      #
+      # Or use the actual health endpoint if your
+      # application exposes a dedicated /health route.
       #
       # Expected response:
       # HTTP 200
       #
-      # Maximum attempts: 10
+      # Attempts: 10
       # Interval: 10 seconds
       # =====================================================
 
@@ -214,6 +234,8 @@ jobs:
           fi
 
           echo "🔍 Checking Assistant Service health..."
+
+          echo "Service: https://assistant-service-g24j.onrender.com/"
 
           for i in {1..10}
           do
@@ -288,6 +310,9 @@ jobs:
             Service:
             Assistant Service
 
+            Application URL:
+            https://assistant-service-g24j.onrender.com/
+
             Health Check URL:
             ${{ secrets.APPLICATION_HEALTH_URL }}
 
@@ -351,6 +376,9 @@ jobs:
             Service:
             Assistant Service
 
+            Application URL:
+            https://assistant-service-g24j.onrender.com/
+
             Health Check URL:
             ${{ secrets.APPLICATION_HEALTH_URL }}
 
@@ -379,7 +407,7 @@ jobs:
             3. Render service status
             4. Application health endpoint
 
-            🚨 Assistant Service deployment requires attention.
+            🚨 Assistant Service requires attention.
 
 
       # =====================================================
@@ -397,6 +425,8 @@ jobs:
           echo "======================================"
 
           echo "Service: Assistant Service"
+
+          echo "URL: $SERVICE_URL"
 
           echo "Version: $VERSION"
 

@@ -79,5 +79,31 @@ A GitHub Personal Access Token (PAT) is a secure authentication method that allo
 It is commonly used to automate Git operations, repository management, and CI/CD workflows without sharing account passwords. 
 ====================================================================
 
+# 3.Mail Settings: Keys and Values Flow for the Entire CI/CD DevOps Workflow:
+# Google Account App Passwords Info:
+https://myaccount.google.com/apppasswords (Select Email first and Enetr password)
+App passwords:
+App name:
+assistant-service-code-mails
+Clcik on : Create Button
+
+<some-value> # Some value genearted right
+
+# GitHub Repository Secrets – Mail Configuration:-
+Table Name: Mail Settings – GitHub Repository Secrets
+
+S.No    Key             Value
+1       MAIL_CC         CC Email Address
+2       MAIL_PASSWORD   Mail App Password
+3       MAIL_TO         Recipient Email Address
+4       MAIL_USERNAME   Sender Email Address
+
+All 4 Mail Settings secrets will be used for CI/CD email notifications, including CI pipeline success/failure, tag creation, and tag-based build and release notifications.
+
+Email notifications will include detailed CI and CD build, deployment, and release information.
+
+=====================================================================
+
+
 
 

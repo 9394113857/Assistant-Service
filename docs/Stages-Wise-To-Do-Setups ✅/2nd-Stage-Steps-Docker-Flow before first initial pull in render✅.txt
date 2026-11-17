@@ -1,0 +1,36 @@
+# Docker FLow Steps Initially:-
+Clcik on Profile -> Account Settings
+Clcik on -> Personal access tokens
+Clcik on : Genearte New token
+
+Access token desciption:
+
+Expiration date:
+None # i make None myself for safe
+
+Access permissions:
+Repo Read and Write # Give like this
+Clcik on: Genearte
+
+Copy token value immeditely at some place like Notepad like etc !!!
+
+Next Login to Github Account and Swich to the Reposity What you wnat to work for creating scecrts etc !!!
+
+=> First Step Go To that particular Repository:
+=> Settings -> Secrets and variables -> Actions
+
+# Repository secrets:-
+Clcik on: New repository secret
+Key/Name     :  DOCKERHUB_TOKEN
+value/Secret :  <some-value>
+Clcik on: Add secret Button
+
+Key/Name     :  DOCKERHUB_USERNAME
+value/Secret :  <some-value>
+Clcik on: Add secret Button
+
+.github/workflows/B-auth-image-first-push.yml
+Run Workflow -> main -> Run Workflow
+Check logs first Build and push to Dockerhub Repositorys of specific doker hub account etc !!!
+
+

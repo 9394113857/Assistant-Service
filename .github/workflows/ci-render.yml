@@ -1,0 +1,549 @@
+
+# ============================================================
+# 🚀 CI/CD - ASSISTANT SERVICE
+# Repository: 9394113857/assistant-service
+#
+# CI:
+#   - Every branch push
+#   - Every pull request
+#   - Every version tag
+#   - Manual workflow execution
+#
+# TESTING:
+#   - Pytest temporarily disabled
+#   - Python dependencies installed
+#   - Python syntax validated
+#   - Required files verified
+#
+# DOCKER:
+#   - Only version tag pushes trigger Docker release
+#   - Docker runs only after successful CI
+#   - Only the exact Git tag is pushed
+#   - No automatic latest tag
+#
+# EMAIL:
+#   - CI success/failure notifications
+#   - Docker release success/failure notifications
+# ============================================================
+
+name: 🚀 CI - Assistant Service
+
+
+# ============================================================
+# WORKFLOW TRIGGERS
+# ============================================================
+
+on:
+
+  # Every branch push and version tag
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+
+  # Pull requests to all branches
+  pull_request:
+    branches:
+      - "**"
+
+  # Manual execution
+  workflow_dispatch:
+
+
+# ============================================================
+# PERMISSIONS
+# ============================================================
+
+permissions:
+  contents: read
+
+
+# ============================================================
+# JOB 1: CI VALIDATION
+# ============================================================
+
+jobs:
+
+  ci:
+
+    name: 🧪 Assistant Service CI
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------------------------------
+      # STEP 1: CHECKOUT REPOSITORY
+      # --------------------------------------------------------
+
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # --------------------------------------------------------
+      # STEP 2: SETUP PYTHON
+      # --------------------------------------------------------
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+
+      # --------------------------------------------------------
+      # STEP 3: INSTALL PROJECT DEPENDENCIES
+      # --------------------------------------------------------
+
+      - name: 📚 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+
+      # --------------------------------------------------------
+      # STEP 4: VERIFY REQUIRED PROJECT FILES
+      # --------------------------------------------------------
+
+      - name: 📁 Verify Project Structure
+        run: |
+          test -f requirements.txt
+          test -f Dockerfile
+          test -f run.py
+          test -f wsgi.py
+
+          echo "✅ Required project files found"
+
+
+      # --------------------------------------------------------
+      # STEP 5: PYTHON SYNTAX VALIDATION
+      # --------------------------------------------------------
+      # Checks all Python files without executing application code.
+      # Excludes Git and virtual environment directories.
+      # --------------------------------------------------------
+
+      - name: 🔍 Validate Python Syntax
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          excluded = {
+              ".git",
+              ".venv",
+              "venv",
+              "__pycache__",
+          }
+
+          files = []
+
+          for path in Path(".").rglob("*.py"):
+              if any(part in excluded for part in path.parts):
+                  continue
+
+              files.append(path)
+
+          if not files:
+              raise SystemExit("❌ No Python files found!")
+
+          errors = []
+
+          for file in files:
+              try:
+                  ast.parse(file.read_text(encoding="utf-8"))
+                  print(f"✅ {file}")
+              except Exception as exc:
+                  errors.append(f"{file}: {exc}")
+
+          if errors:
+              print("\n❌ Syntax errors found:")
+              for error in errors:
+                  print(error)
+              raise SystemExit(1)
+
+          print(f"\n✅ Validated {len(files)} Python files")
+          PY
+
+
+      # --------------------------------------------------------
+      # STEP 6: AUTOMATED TESTS TEMPORARILY DISABLED
+      # --------------------------------------------------------
+
+      - name: ⏸️ Automated Tests Disabled
+        run: |
+          echo "======================================"
+          echo "AUTOMATED TESTS TEMPORARILY DISABLED"
+          echo "======================================"
+          echo "Test cases are not implemented yet."
+          echo "Dependencies installed successfully."
+          echo "Python syntax validation completed."
+          echo "Pytest will be enabled later."
+          echo "======================================"
+
+
+      # --------------------------------------------------------
+      # STEP 7: CI SUCCESS EMAIL
+      # --------------------------------------------------------
+
+      - name: 📧 CI Success Email
+        if: success() && github.event_name != 'pull_request'
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚀 CI SUCCESS - Assistant Service"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚀 ASSISTANT SERVICE CI SUCCESS
+
+            Repository:
+            ${{ github.repository }}
+
+            Commit:
+            ${{ github.sha }}
+
+            Reference:
+            ${{ github.ref }}
+
+            Event:
+            ${{ github.event_name }}
+
+            Actor:
+            ${{ github.actor }}
+
+            Status:
+            CI VALIDATION SUCCESSFUL
+
+            Dependency Installation:
+            SUCCESS
+
+            Python Syntax Validation:
+            SUCCESS
+
+            Automated Tests:
+            TEMPORARILY DISABLED
+
+            Docker:
+            CHECK TAG RELEASE JOB IF APPLICABLE
+
+
+      # --------------------------------------------------------
+      # STEP 8: CI FAILURE EMAIL
+      # --------------------------------------------------------
+
+      - name: ❌ CI Failure Email
+        if: failure() && github.event_name != 'pull_request'
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚨 CI FAILED - Assistant Service"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚨 ASSISTANT SERVICE CI FAILED
+
+            Repository:
+            ${{ github.repository }}
+
+            Commit:
+            ${{ github.sha }}
+
+            Reference:
+            ${{ github.ref }}
+
+            Event:
+            ${{ github.event_name }}
+
+            Actor:
+            ${{ github.actor }}
+
+            Status:
+            CI VALIDATION FAILED
+
+            Please check GitHub Actions logs.
+
+
+      # --------------------------------------------------------
+      # STEP 9: FINAL CI SUCCESS LOG
+      # --------------------------------------------------------
+
+      - name: ✅ CI Completed Successfully
+        if: success()
+        run: |
+          echo "======================================"
+          echo "🚀 ASSISTANT SERVICE CI SUCCESS"
+          echo "======================================"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Commit: $GITHUB_SHA"
+          echo "Reference: $GITHUB_REF"
+          echo "Dependencies: SUCCESS"
+          echo "Syntax: SUCCESS"
+          echo "Pytest: DISABLED"
+          echo "======================================"
+
+
+# ============================================================
+# JOB 2: DOCKER BUILD AND PUSH
+# ============================================================
+#
+# Runs ONLY when:
+#   1. Git reference starts with refs/tags/v
+#   2. CI job succeeds
+#
+# Branch pushes:
+#   Docker skipped
+#
+# Pull requests:
+#   Docker skipped
+#
+# Failed CI:
+#   Docker skipped
+#
+# Manual branch execution:
+#   Docker skipped
+#
+# Version tag:
+#   Build and push exact version tag
+# ============================================================
+
+  docker-release:
+
+    name: 🐳 Docker Build and Push
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - ci
+
+    if: >-
+      startsWith(github.ref, 'refs/tags/v')
+      && needs.ci.result == 'success'
+
+    env:
+
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
+
+      IMAGE_TAG: ${{ github.ref_name }}
+
+
+    steps:
+
+      # --------------------------------------------------------
+      # STEP 1: CHECKOUT EXACT TAGGED SOURCE
+      # --------------------------------------------------------
+
+      - name: 📦 Checkout Tagged Release
+        uses: actions/checkout@v4
+
+
+      # --------------------------------------------------------
+      # STEP 2: RELEASE INFORMATION
+      # --------------------------------------------------------
+
+      - name: 🏷️ Display Release Information
+        run: |
+          echo "======================================"
+          echo "ASSISTANT SERVICE DOCKER RELEASE"
+          echo "======================================"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Version: $IMAGE_TAG"
+          echo "Commit: $GITHUB_SHA"
+          echo "Docker Image: $DOCKER_IMAGE:$IMAGE_TAG"
+          echo "======================================"
+
+
+      # --------------------------------------------------------
+      # STEP 3: BUILD EXACT VERSION IMAGE
+      # --------------------------------------------------------
+      # No latest tag is created.
+      # --------------------------------------------------------
+
+      - name: 🏗️ Build Docker Image
+        run: |
+          docker build \
+            -t "$DOCKER_IMAGE:$IMAGE_TAG" \
+            .
+
+          echo "✅ Docker image built successfully"
+
+
+      # --------------------------------------------------------
+      # STEP 4: VERIFY DOCKER IMAGE
+      # --------------------------------------------------------
+
+      - name: 🔍 Verify Docker Image
+        run: |
+          docker image inspect "$DOCKER_IMAGE:$IMAGE_TAG"
+
+          echo "======================================"
+          echo "✅ DOCKER IMAGE VERIFIED"
+          echo "======================================"
+
+          echo "Image: $DOCKER_IMAGE:$IMAGE_TAG"
+
+
+      # --------------------------------------------------------
+      # STEP 5: DOCKER HUB LOGIN
+      # --------------------------------------------------------
+
+      - name: 🔐 Docker Hub Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      # --------------------------------------------------------
+      # STEP 6: PUSH EXACT VERSION TAG
+      # --------------------------------------------------------
+      # Example:
+      # v1.0.0 -> assistant-service:v1.0.0
+      # v1.0.1 -> assistant-service:v1.0.1
+      #
+      # No latest tag is pushed.
+      # --------------------------------------------------------
+
+      - name: 📤 Push Version Image
+        run: |
+          docker push "$DOCKER_IMAGE:$IMAGE_TAG"
+
+          echo "======================================"
+          echo "✅ DOCKER IMAGE PUSHED"
+          echo "======================================"
+
+          echo "Published: $DOCKER_IMAGE:$IMAGE_TAG"
+
+
+      # --------------------------------------------------------
+      # STEP 7: DOCKER RELEASE SUCCESS EMAIL
+      # --------------------------------------------------------
+
+      - name: 📧 Docker Release Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚀 DOCKER RELEASE SUCCESS - Assistant Service"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚀 ASSISTANT SERVICE DOCKER RELEASE SUCCESS
+
+            Repository:
+            ${{ github.repository }}
+
+            Version:
+            ${{ github.ref_name }}
+
+            Commit:
+            ${{ github.sha }}
+
+            Docker Hub Image:
+            ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
+
+            Build:
+            SUCCESS
+
+            Verification:
+            SUCCESS
+
+            Docker Push:
+            SUCCESS
+
+            Release Status:
+            SUCCESSFUL
+
+
+      # --------------------------------------------------------
+      # STEP 8: DOCKER RELEASE FAILURE EMAIL
+      # --------------------------------------------------------
+
+      - name: ❌ Docker Release Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚨 DOCKER RELEASE FAILED - Assistant Service"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚨 ASSISTANT SERVICE DOCKER RELEASE FAILED
+
+            Repository:
+            ${{ github.repository }}
+
+            Version:
+            ${{ github.ref_name }}
+
+            Commit:
+            ${{ github.sha }}
+
+            Docker Image:
+            ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
+
+            Release Status:
+            FAILED
+
+            Check GitHub Actions logs for details.
+
+
+      # --------------------------------------------------------
+      # STEP 9: FINAL RELEASE SUCCESS LOG
+      # --------------------------------------------------------
+
+      - name: 🎉 Docker Release Completed
+        if: success()
+        run: |
+          echo "======================================"
+          echo "🚀 ASSISTANT SERVICE RELEASE SUCCESS"
+          echo "======================================"
+          echo "Version: $IMAGE_TAG"
+          echo "Published Image:"
+          echo "$DOCKER_IMAGE:$IMAGE_TAG"
+          echo "Docker Push: SUCCESS"
+          echo "======================================"

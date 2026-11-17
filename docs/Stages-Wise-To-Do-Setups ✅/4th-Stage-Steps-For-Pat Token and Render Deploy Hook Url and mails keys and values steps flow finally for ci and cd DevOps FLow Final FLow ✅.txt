@@ -14,5 +14,70 @@ Clcik on: Add Secret Button
 # So upto this new tag based deployments so server hook saved in git secrets but stil there continue remaining flow of Steps.
 ==========================================================================================================================================================================
 
+# 2.PAT_TOKEN:-
+Pat tokens are used becased for genartaing git next incementags tags absed pat tokebn needed for git repo under tags cretaion for like next cd woklows for avauilable tag build release of dcoker image will be pulled may be first and tehn it will be deployed on selected hook url of thserver as per secrets saved in repo okay for almost recent ci tests passed means and then tag based also test should passed and then buld will be relased so cd woklow server hook url will be taken from secrst and whatver deteced taht spcic git atb of dcoker buld  image will be deployed on that hook url im mean whatver on that server right.
+# Token steps for generating pat token under git repo lets see how:-
+Go to Git account -> Clcik on Profile -> Settings
+
+🧭 STEP 1: Open Token Settings
+Go to GitHub
+Click Profile (top-right)
+Click Settings
+Scroll → Developer settings
+Click → Personal access tokens
+Choose → ✅ Fine-grained tokens
+
+➕ STEP 2: Create New Token
+Click Generate new token
+Select Fine-grained token
+
+📝 STEP 3: Fill Basic Details
+Name → ci-cd-token
+Expiration → 30 / 90 days (recommended)
+
+
+🧩 STEP 4: Repository Access
+Choose ONE:
+✅ Selected repositories (BEST practice 🔥)
+OR
+✅ All repositories (if multiple services)
+
+⚙️ STEP 5: Set Permissions (MOST IMPORTANT)
+✅ FINAL REQUIRED PERMISSIONS (Your Use Case)
+Since you are using:
+Git push/pull
+Render deployment
+GitHub Actions
+Private repos
+
+# 👉 Set exactly this:
+Expand the permission sections and configure:
+
+# GitHub PAT (Personal Access Token) Permissions:-
+Permission:	        Access:
+Actions	            Read-only
+Contents	        Read and write
+Metadata	        Read-only (Automatic)
+Commit statuses	    Read and write
+Pull requests	    Read-only (Optional)
+
+# Important: Your current screen shows Actions, Contents and Metadata. Scroll further down to find Commit statuses and Pull requests.
+
+🔐 STEP 6: Generate Token
+Click Generate token
+⚠️ Copy it immediately (only shown once)
+
+
+# Git Secrets:-
+Key     :    PAT_TOKEN
+Value   :    <some-value>
+Clcik on: Add Secret Button
+
+# Overview:
+A GitHub Personal Access Token (PAT) is a secure authentication method that allows scripts and applications to access GitHub repositories with controlled permissions.
+
+It is commonly used to automate Git operations, repository management, and CI/CD workflows without sharing account passwords. 
+====================================================================
+
 
 

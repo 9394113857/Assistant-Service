@@ -1,0 +1,411 @@
+
+# =====================================================
+# 🚀 CD - Assistant Service Render
+# =====================================================
+#
+# Repository:
+# 9394113857/assistant-service
+#
+# DEPLOYMENT FEATURES:
+#   1. Manual deployment
+#   2. Daily scheduled deployment at 2 AM IST
+#   3. Latest Git tag detection
+#   4. Render deployment hook integration
+#   5. Application startup wait
+#   6. Application health verification
+#   7. Deployment success email
+#   8. Deployment failure email
+#
+# =====================================================
+
+name: 🚀 CD - Assistant Service Render
+
+run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.actor }}
+
+
+# =====================================================
+# WORKFLOW TRIGGERS
+# =====================================================
+
+on:
+
+  # ==========================================
+  # MANUAL DEPLOYMENT
+  # ==========================================
+
+  workflow_dispatch:
+
+
+  # ==========================================
+  # DAILY AUTOMATIC DEPLOYMENT
+  #
+  # 2:00 AM IST = 20:30 UTC previous day
+  # ==========================================
+
+  schedule:
+    - cron: "30 20 * * *"
+
+
+# =====================================================
+# DEPLOYMENT JOB
+# =====================================================
+
+jobs:
+
+  deploy:
+
+    name: 🚀 Deploy Assistant Service
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+
+    steps:
+
+
+      # =====================================================
+      # STEP 1: CHECKOUT LATEST MAIN BRANCH
+      # =====================================================
+
+      - name: 📦 Checkout Repository
+
+        uses: actions/checkout@v4
+
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+
+      # =====================================================
+      # STEP 2: DETECT DEPLOYMENT METADATA
+      # =====================================================
+      #
+      # If tags exist:
+      #   Use the latest version tag.
+      #
+      # If no tags exist:
+      #   Use latest.
+      #
+      # Deployment always checks out main.
+      # =====================================================
+
+      - name: 🏷️ Detect Deployment Metadata
+
+        run: |
+
+          TAGS=$(git tag --sort=-v:refname)
+
+          if [ -z "$TAGS" ]
+          then
+            VERSION="latest"
+          else
+            VERSION=$(echo "$TAGS" | head -n 1)
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          echo "COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+          echo "BRANCH=main" >> "$GITHUB_ENV"
+
+          echo "DEPLOY_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+          echo "DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')" >> "$GITHUB_ENV"
+
+          echo "======================================"
+          echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
+          echo "======================================"
+
+          echo "Service: Assistant Service"
+          echo "Version: $VERSION"
+          echo "Commit: $(git rev-parse HEAD)"
+          echo "Branch: main"
+
+          echo "======================================"
+
+
+      # =====================================================
+      # STEP 3: TRIGGER RENDER DEPLOYMENT
+      # =====================================================
+      #
+      # Uses the repository secret:
+      # RENDER_DEPLOY_HOOK
+      #
+      # Configure this secret with the Assistant Service
+      # Render deployment hook, not another service's hook.
+      # =====================================================
+
+      - name: 🚀 Trigger Render Deployment
+
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+        run: |
+
+          if [ -z "$RENDER_DEPLOY_HOOK" ]
+          then
+            echo "❌ RENDER_DEPLOY_HOOK secret is missing"
+            exit 1
+          fi
+
+          echo "🚀 Triggering Assistant Service Render deployment..."
+
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --output /tmp/render_response.txt \
+            --write-out "%{http_code}" \
+            --request POST \
+            "$RENDER_DEPLOY_HOOK")
+
+          echo "Render response HTTP: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]
+          then
+            echo "❌ Render deployment trigger failed"
+            cat /tmp/render_response.txt
+            exit 1
+          fi
+
+          echo "✅ Render deployment triggered successfully"
+
+
+      # =====================================================
+      # STEP 4: WAIT FOR APPLICATION STARTUP
+      # =====================================================
+
+      - name: ⏳ Wait For Application Startup
+
+        run: |
+
+          echo "Waiting for Assistant Service startup..."
+
+          sleep 30
+
+          echo "✅ Initial startup wait completed"
+
+
+      # =====================================================
+      # STEP 5: APPLICATION HEALTH CHECK
+      # =====================================================
+      #
+      # Uses repository secret:
+      # APPLICATION_HEALTH_URL
+      #
+      # Expected response:
+      # HTTP 200
+      #
+      # Maximum attempts: 10
+      # Interval: 10 seconds
+      # =====================================================
+
+      - name: ❤️ Assistant Service Health Check
+
+        env:
+          APPLICATION_HEALTH_URL: ${{ secrets.APPLICATION_HEALTH_URL }}
+
+        run: |
+
+          if [ -z "$APPLICATION_HEALTH_URL" ]
+          then
+            echo "❌ APPLICATION_HEALTH_URL secret is missing"
+            exit 1
+          fi
+
+          echo "🔍 Checking Assistant Service health..."
+
+          for i in {1..10}
+          do
+
+            STATUS=$(curl \
+              --silent \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              --max-time 15 \
+              "$APPLICATION_HEALTH_URL" || true)
+
+            REMAINING=$((10 - i))
+
+            echo "❤️ Health Check Attempt $i/10"
+            echo "HTTP Status: $STATUS"
+            echo "Remaining Attempts: $REMAINING"
+
+            if [ "$STATUS" = "200" ]
+            then
+
+              echo "DEPLOY_STATUS=SUCCESS" >> "$GITHUB_ENV"
+
+              echo "🟢 Assistant Service is healthy"
+
+              exit 0
+
+            fi
+
+            if [ "$i" -lt 10 ]
+            then
+              sleep 10
+            fi
+
+          done
+
+          echo "DEPLOY_STATUS=FAILED" >> "$GITHUB_ENV"
+
+          echo "🔴 Assistant Service health check failed"
+
+          exit 1
+
+
+      # =====================================================
+      # STEP 6: DEPLOYMENT SUCCESS EMAIL
+      # =====================================================
+
+      - name: 📧 Deployment Success Email
+
+        if: success()
+
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚀 CD SUCCESS | Assistant Service ${{ env.VERSION }}"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS
+
+            Service:
+            Assistant Service
+
+            Health Check URL:
+            ${{ secrets.APPLICATION_HEALTH_URL }}
+
+            Version:
+            ${{ env.VERSION }}
+
+            Commit:
+            ${{ env.COMMIT }}
+
+            Branch:
+            ${{ env.BRANCH }}
+
+            Trigger:
+            ${{ github.event_name }}
+
+            Triggered By:
+            ${{ github.actor }}
+
+            Deployment Time UTC:
+            ${{ env.DEPLOY_TIME_UTC }}
+
+            Deployment Time IST:
+            ${{ env.DEPLOY_TIME_IST }}
+
+            Health Status:
+            ${{ env.DEPLOY_STATUS }}
+
+            Deployment Result:
+            SUCCESSFUL
+
+
+      # =====================================================
+      # STEP 7: DEPLOYMENT FAILURE EMAIL
+      # =====================================================
+
+      - name: ❌ Deployment Failure Email
+
+        if: failure()
+
+        uses: dawidd6/action-send-mail@v3
+
+        with:
+
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+
+          subject: "🚨 CD FAILED | Assistant Service"
+
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+
+          body: |
+            🚨 ASSISTANT SERVICE DEPLOYMENT FAILED
+
+            Service:
+            Assistant Service
+
+            Health Check URL:
+            ${{ secrets.APPLICATION_HEALTH_URL }}
+
+            Version:
+            ${{ env.VERSION }}
+
+            Commit:
+            ${{ github.sha }}
+
+            Branch:
+            main
+
+            Trigger:
+            ${{ github.event_name }}
+
+            Triggered By:
+            ${{ github.actor }}
+
+            Deployment Result:
+            FAILED
+
+            Please check:
+
+            1. GitHub Actions logs
+            2. Render deployment logs
+            3. Render service status
+            4. Application health endpoint
+
+            🚨 Assistant Service deployment requires attention.
+
+
+      # =====================================================
+      # STEP 8: FINAL DEPLOYMENT SUCCESS LOG
+      # =====================================================
+
+      - name: 🎉 Deployment Completed Successfully
+
+        if: success()
+
+        run: |
+
+          echo "======================================"
+          echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
+          echo "======================================"
+
+          echo "Service: Assistant Service"
+
+          echo "Version: $VERSION"
+
+          echo "Commit: $COMMIT"
+
+          echo "Branch: $BRANCH"
+
+          echo "Health: $DEPLOY_STATUS"
+
+          echo "Deployment: SUCCESS"
+
+          echo "======================================"

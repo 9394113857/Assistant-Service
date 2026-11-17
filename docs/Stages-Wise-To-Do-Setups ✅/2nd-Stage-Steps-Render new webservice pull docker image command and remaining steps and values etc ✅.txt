@@ -1,0 +1,26 @@
+# Login to render
+Clik on Dashboard
+New -> Web Service
+
+# Choose Exisning Image:
+Image URL:-
+docker.io/pythoncodelife/assistant-service:latest
+Click on: Connect Button
+
+# Change Name of the Service(your-choice-only): [Ex:assistant-service ]
+
+# Environment Variables:-
+Add Environment Variable Button or directly add accordingly
+
+
+# Exact keys and values pasted for assistant-service:-
+DATABASE_URL    =  "postgresql://postgres.njetkigxmpagamescuab:Raghunadh_1992@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+FLASK_ENV       =  Production
+JWT_SECRET_KEY  =  "9fA3xP@7Rk!2DqM8#ZbLw4^sC0N%YVJH"
+PORT            =   10000
+SENTRY_DSN      =   https://cd6dceafc1cb06e3a965412a06c0e695@o4511303060684800.ingest.us.sentry.io/4511303073857536
+
+# At last CLick on: Deploy Web Service Button
+
+---> And wait for up and running and check logs make yourself habit of monitoring by watching logs and understand and make habitual timely.
+

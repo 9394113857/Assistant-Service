@@ -22,13 +22,13 @@ def detect_intent(message: str):
     )):
         return "assistant_identity", 0.99, "rule_v2"
 
-    if msg in {"about", "#about", "help", "#help", "features", "what can you do"}:
+    if re.fullmatch(r"#?(about|help|features)|what can you do[?!.]?", msg):
         return "assistant_about", 0.98, "rule_v2"
 
     # Greetings and conversational messages (word-boundary matching avoids
     # false positives such as matching "hi" inside "which").
     greeting_patterns = (
-        r"^(hi+|hello+|hey+|heyy+)[!. ]*$",
+        r"^(hi+|hello+|hey+|hii+|heyy+)\b",
         r"^(good morning|good afternoon|good evening|good night)\b",
         r"\bhow are you\b",
         r"\b(thank you|thanks|thx)\b",
@@ -69,7 +69,7 @@ def detect_intent(message: str):
         return "recommend_product", 0.92, "rule_v2"
     if re.search(r"\b(cheap|cheaper|lowest price|low price)\b", msg):
         return "cheaper_product", 0.90, "rule_v2"
-    if re.search(r"\b(phone|laptop|earbuds)\b", msg):
+    if re.search(r"\b(phones?|laptops?|earbuds?)\b", msg):
         return "product_category", 0.88, "rule_v2"
     if re.search(r"\b(order|orders)\b", msg):
         return "show_orders", 0.92, "rule_v2"

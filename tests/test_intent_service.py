@@ -1,6 +1,6 @@
 import unittest
 
-from app.services.intent_service import detect_intent
+from app.services.intent_service import detect_intent\nfrom app.services.public_information_service import _query_after_command
 
 
 class IntentServiceTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class IntentServiceTests(unittest.TestCase):
         cases = {
             "show products": "show_products",
             "cheaper products": "cheaper_product",
-            "show laptops": "product_category",
+            "show laptops": "product_category",\n            "show phones": "product_category",
             "show my orders": "show_orders",
             "track my order": "track_order",
             "recommend a phone": "recommend_product",
@@ -40,6 +40,20 @@ class IntentServiceTests(unittest.TestCase):
         for message, expected in cases.items():
             with self.subTest(message=message):
                 self.assertEqual(detect_intent(message)[0], expected)
+
+    def test_natural_language_greetings_and_about_are_recognized(self):
+        self.assertEqual(detect_intent("hello bro")[0], "greeting")
+        self.assertEqual(detect_intent("what can you do?")[0], "assistant_about")
+
+    def test_information_query_extraction_supports_natural_language(self):
+        self.assertEqual(
+            _query_after_command("Can you tell me the weather in Hyderabad?", ("weather",)),
+            "Hyderabad",
+        )
+        self.assertEqual(
+            _query_after_command("What is the meaning of resilience?", ("meaning",)),
+            "resilience",
+        )
 
     def test_hi_is_not_matched_inside_another_word(self):
         self.assertEqual(detect_intent("which laptop is best")[0], "product_category")

@@ -20,11 +20,19 @@ def _get_json(url, params=None, headers=None):
 
 
 def _query_after_command(message, commands):
+    """Extract a search term from command-style or natural-language requests."""
     text = (message or "").strip()
-    for command in commands:
-        pattern = rf"^\s*#?{re.escape(command)}\s*"
-        text = re.sub(pattern, "", text, count=1, flags=re.IGNORECASE)
-    text = re.sub(r"^(in|for|of|about)\s+", "", text, flags=re.IGNORECASE)
+    alternatives = "|".join(re.escape(command) for command in sorted(commands, key=len, reverse=True))
+    match = re.search(rf"#?\\b(?:{alternatives})\\b", text, flags=re.IGNORECASE)
+    if match:
+        text = text[match.end():]
+    text = re.sub(
+        r"^(please\\s+)?(can you\\s+)?(tell me\\s+)?(what is\\s+)?(the\\s+)?",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"^(like|in|of|for|about|on)\\s+", "", text, flags=re.IGNORECASE)
     return text.strip(" ?.!#")
 
 

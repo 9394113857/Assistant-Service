@@ -27,14 +27,15 @@ This file records verified code changes, tests, decisions, and pending work.
 - Joke, fact, dictionary, books, Wikipedia, and quote lookups use public endpoints. External services can change or impose limits.
 
 ### Validation status
-- Code changes are committed on the feature branch, not merged into `main`.
-- Unit tests are added but have not yet been executed in the deployed environment.
+- Code changes are committed on `feature/web-assistant-reference-capabilities`, not merged into `main`.
+- GitHub Actions run #15 passed: dependency installation, syntax validation across 30 Python files, and all 6 unit tests.
+- The test suite caught and helped resolve plural product-category matching and natural-language query whitespace handling.
 - External API calls and API-key configuration have not yet been verified.
-- Do not mark a feature production-tested until its endpoint is exercised successfully.
+- CI success does not mean the external providers or the deployed Render endpoint have been integration-tested.
 
 ### Next steps
-1. Run unit tests and resolve any failures.
-2. Configure API keys in the local environment and Render service environment.
-3. Exercise each information intent through `POST /api/v1/assistant/chat`.
-4. Review the Angular chat UI's handling of response, intent, confidence, and provider errors.
-5. Add a CI test job and update the main project TODO tracker after verification.
+1. Configure API keys in the local environment and Render service environment.
+2. Exercise each information intent through `POST /api/v1/assistant/chat`.
+3. Review the Angular chat UI's handling of response, intent, confidence, and provider errors.
+4. Add integration tests with mocked external HTTP responses.
+5. Update the main project TODO tracker after manual API verification.

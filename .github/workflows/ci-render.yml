@@ -10,7 +10,7 @@
 #   - Manual workflow execution
 #
 # TESTING:
-#   - Pytest temporarily disabled
+#   - Python unittest suite executed
 #   - Python dependencies installed
 #   - Python syntax validated
 #   - Required files verified
@@ -167,19 +167,12 @@ jobs:
 
 
       # --------------------------------------------------------
-      # STEP 6: AUTOMATED TESTS TEMPORARILY DISABLED
+      # STEP 6: RUN AUTOMATED UNIT TESTS
       # --------------------------------------------------------
 
-      - name: ⏸️ Automated Tests Disabled
+      - name: 🧪 Run Unit Tests
         run: |
-          echo "======================================"
-          echo "AUTOMATED TESTS TEMPORARILY DISABLED"
-          echo "======================================"
-          echo "Test cases are not implemented yet."
-          echo "Dependencies installed successfully."
-          echo "Python syntax validation completed."
-          echo "Pytest will be enabled later."
-          echo "======================================"
+          python -m unittest discover -s tests -v
 
 
       # --------------------------------------------------------
@@ -301,7 +294,7 @@ jobs:
           echo "Reference: $GITHUB_REF"
           echo "Dependencies: SUCCESS"
           echo "Syntax: SUCCESS"
-          echo "Pytest: DISABLED"
+          echo "Unit tests: ENABLED"
           echo "======================================"
 
 

@@ -421,3 +421,65 @@ Required improvements:
 - Handle pronouns and references.
 - Handle product categories.
 -
+
+
+# 15. Web Assistant Reference Capabilities — Implementation Update (18-Nov-2026)
+
+The legacy WhatsApp bot `app.py` was used as a functional reference. The selected target is the existing Angular/web chat API; no Twilio webhook is being added in this phase.
+
+## Added architecture components
+
+- `app/intents/information_handler.py` — routes information intents to the service layer.
+- `app/services/public_information_service.py` — contains isolated provider functions for public information lookups.
+- `app/services/intent_service.py` — expanded rule-based intent recognition; model version is currently `rule_v2`.
+- `app/services/intent_registry.py` — maps the expanded intent names to existing and new handlers.
+- `tests/test_intent_service.py` — unit tests for reference commands, e-commerce intents, greeting false positives, and query extraction.
+- `docs/PROJECT_DEVELOPMENT_LOG.md` — date-wise implementation and validation log.
+
+## Reference capabilities recognized
+
+- Greeting and conversational responses.
+- Assistant identity and About/help.
+- Jokes.
+- Top news headlines.
+- Random facts.
+- COVID statistics (requires a verified provider configuration).
+- Synonyms.
+- Word meanings and examples.
+- Book information.
+- Movie information.
+- Weather.
+- Wikipedia summaries.
+- Quotes.
+
+Existing e-commerce product, order, tracking, and recommendation intent names are also mapped through the registry.
+
+## External provider configuration
+
+Set these environment variables in local development and the Render service environment where required:
+
+- `OPENWEATHERMAP_API_KEY` — weather.
+- `NEWS_API_KEY` — India top headlines.
+- `OMDB_API_KEY` — movie details.
+- `COVID_STATS_API_URL` — optional verified COVID statistics provider endpoint.
+
+Never commit real API keys. An example variable file is available at `.env.example`.
+
+## Validation record
+
+- GitHub Actions CI run #15 passed.
+- Python syntax validation passed for 30 Python files.
+- Six unit tests passed.
+- Live external API calls and Render integration have not yet been verified.
+- Changes remain on `feature/web-assistant-reference-capabilities`; they have not been merged into `main`.
+
+## Remaining work
+
+1. Configure provider API keys securely.
+2. Test each public-information capability through `POST /api/v1/assistant/chat`.
+3. Add mocked integration tests for external provider response shapes and error handling.
+4. Verify Angular chat rendering and response behavior.
+5. Review provider reliability, rate limits, and terms before production use.
+6. Choose and verify a reliable COVID statistics provider before enabling that capability.
+7. Review whether product-category and cheaper-product requests need actual filtering in the product service rather than the current generic product-list handler.
+8. Review order tracking so `track_order` can retrieve a specific order status rather than only returning the recent-order list.

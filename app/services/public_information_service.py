@@ -26,12 +26,7 @@ def _query_after_command(message, commands):
     match = re.search(rf"#?\b(?:{alternatives})\b", text, flags=re.IGNORECASE)
     if match:
         text = text[match.end():]
-    text = re.sub(
-        r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is\s+)?(the\s+)?",
-        "",
-        text,
-        flags=re.IGNORECASE,
-    )
+    text = re.sub(r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is\s+)?(the\s+)?", "", text, flags=re.IGNORECASE)
     text = re.sub(r"^(like|in|of|for|about|on)\s+", "", text, flags=re.IGNORECASE)
     return text.strip(" ?.!#")
 

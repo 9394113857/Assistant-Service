@@ -1,6 +1,7 @@
 import unittest
 
-from app.services.intent_service import detect_intent\nfrom app.services.public_information_service import _query_after_command
+from app.services.intent_service import detect_intent
+from app.services.public_information_service import _query_after_command
 
 
 class IntentServiceTests(unittest.TestCase):
@@ -32,7 +33,8 @@ class IntentServiceTests(unittest.TestCase):
         cases = {
             "show products": "show_products",
             "cheaper products": "cheaper_product",
-            "show laptops": "product_category",\n            "show phones": "product_category",
+            "show laptops": "product_category",
+            "show phones": "product_category",
             "show my orders": "show_orders",
             "track my order": "track_order",
             "recommend a phone": "recommend_product",

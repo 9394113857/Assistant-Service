@@ -53,7 +53,7 @@
 #
 # ============================================================
 
-name: 🚀 CD - Assistant Service Render
+name: 🚀 CD - Backend Assistant Service Render
 
 run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.event.workflow_run.head_branch || github.ref_name }} | ${{ github.actor }}
 

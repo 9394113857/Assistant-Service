@@ -12,12 +12,15 @@
 #
 # 1. AUTOMATIC VERSION-TAG DEPLOYMENT
 #    - A v* Git tag starts the CI workflow.
-#    - CI validation must succeed.
-#    - The Docker Build and Push job must also succeed.
-#    - CD starts only after the complete CI workflow finishes.
-#    - CD verifies the exact tag and Docker release job result.
-#    - The tag must point to the current main HEAD because the
-#      configured Render deploy hook deploys the main branch.
+#    - CD listens for completion of the complete CI workflow.
+#    - CI validation MUST succeed.
+#    - The Docker Build and Push job MUST also succeed.
+#    - Missing, skipped, cancelled, or failed Docker jobs are
+#      never accepted as a successful release.
+#    - CD verifies the CI and Docker job conclusions through the
+#      GitHub Actions jobs API before calling the Render hook.
+#    - The release tag must match the CI run commit and current
+#      main HEAD, preserving the existing release safety check.
 #
 # 2. MANUAL DEPLOYMENT
 #    - Run this workflow from the Actions tab.
@@ -28,11 +31,18 @@
 #    - Deploys the latest main branch commit.
 #
 # IMPORTANT:
-#    - A normal push to main never triggers CD automatically.
+#    - A normal branch push, pull request, or non-version tag
+#      never triggers automatic CD.
 #    - A successful CI validation alone is not a release.
-#    - A version-tag release is eligible only after Docker push
-#      has completed successfully.
-#    - This workflow sends no email, avoiding Gmail quota errors.
+#    - Automatic CD is allowed only after BOTH required jobs
+#      (CI validation and Docker Build and Push) succeed.
+#    - Manual and scheduled deployments remain independent of
+#      the CI/Docker release gate.
+#    - No email actions or email secrets are used in this file.
+#    - This Render service is image-backed. The deploy hook
+#      redeploys the image reference configured in Render; it
+#      does not select a Docker tag by itself. Keep that image
+#      reference aligned with the image intended for deployment.
 #
 # REQUIRED GITHUB SECRET:
 #    RENDER_DEPLOY_HOOK
@@ -105,6 +115,7 @@ jobs:
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
         startsWith(github.event.workflow_run.head_branch, 'v')
       )
 
@@ -113,7 +124,8 @@ jobs:
       # STEP 1: VERIFY COMPLETE CI AND DOCKER RELEASE RESULTS
       # --------------------------------------------------------
       # workflow_run fires after the entire CI workflow completes.
-      # Query its jobs and require BOTH:
+      # Only a successful tag-push run reaches this step. Query
+      # its jobs and independently require BOTH:
       #   - Assistant Service CI = success
       #   - Docker Build and Push = success
       #
@@ -377,8 +389,8 @@ jobs:
       # --------------------------------------------------------
       # STEP 7: FINAL DEPLOYMENT RESULT
       # --------------------------------------------------------
-      # No email action is used here. This avoids repeated Gmail
-      # quota failures. Result details remain visible in Actions.
+      # No email action is used here. Result details remain
+      # visible in the GitHub Actions run summary and logs.
       - name: 🎉 Deployment Completed Successfully
         if: success()
         run: |

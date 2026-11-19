@@ -23,8 +23,9 @@
 #   - Does not create or push the latest tag
 #
 # EMAIL:
-#   - CI success/failure notifications
-#   - Docker release success/failure notifications
+#   - No emails for ordinary CI validation runs.
+#   - Docker release success/failure notifications only for v* tags.
+#   - Email failures do not fail CI or block the CD workflow.
 #
 # ============================================================
 
@@ -156,101 +157,7 @@ jobs:
           PY
 
       # --------------------------------------------------------
-      # STEP 6: CI SUCCESS EMAIL
-      # --------------------------------------------------------
-      # Do not send CI emails for pull_request events.
-      - name: 📧 CI Success Email
-        if: success() && github.event_name != 'pull_request'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚀 CI SUCCESS - Assistant Service"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚀 ASSISTANT SERVICE CI SUCCESS
-
-            Repository:
-            ${{ github.repository }}
-
-            Commit:
-            ${{ github.sha }}
-
-            Reference:
-            ${{ github.ref }}
-
-            Event:
-            ${{ github.event_name }}
-
-            Actor:
-            ${{ github.actor }}
-
-            Dependency Installation:
-            SUCCESS
-
-            Required Project Files:
-            SUCCESS
-
-            Python Syntax Validation:
-            SUCCESS
-
-            Unit Tests:
-            TEMPORARILY EXCLUDED
-
-            CI Result:
-            SUCCESSFUL
-
-            Docker:
-            Docker release runs only for version tags
-            after successful CI validation.
-
-      # --------------------------------------------------------
-      # STEP 7: CI FAILURE EMAIL
-      # --------------------------------------------------------
-      - name: ❌ CI Failure Email
-        if: failure() && github.event_name != 'pull_request'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 CI FAILED - Assistant Service"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚨 ASSISTANT SERVICE CI FAILED
-
-            Repository:
-            ${{ github.repository }}
-
-            Commit:
-            ${{ github.sha }}
-
-            Reference:
-            ${{ github.ref }}
-
-            Event:
-            ${{ github.event_name }}
-
-            Actor:
-            ${{ github.actor }}
-
-            CI Result:
-            FAILED
-
-            Please check the GitHub Actions logs
-            to identify the failed step.
-
-      # --------------------------------------------------------
-      # STEP 8: FINAL CI SUCCESS LOG
+      # STEP 6: FINAL CI SUCCESS LOG
       # --------------------------------------------------------
       - name: ✅ CI Completed Successfully
         if: success()
@@ -357,6 +264,10 @@ jobs:
       # --------------------------------------------------------
       - name: 📧 Docker Release Success Email
         if: success()
+        # Email is sent only for a version-tag Docker release.
+        # A Gmail quota/SMTP failure must not mark a successful
+        # Docker build and push as failed or block the CD workflow.
+        continue-on-error: true
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -400,6 +311,9 @@ jobs:
       # --------------------------------------------------------
       - name: ❌ Docker Release Failure Email
         if: failure()
+        # Notification failure must not replace the original
+        # Docker build/push failure as the job's final result.
+        continue-on-error: true
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com

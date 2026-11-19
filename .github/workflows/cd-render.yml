@@ -1,248 +1,171 @@
-
-# =====================================================
-# 🚀 CD - Assistant Service Render
-# =====================================================
+# ============================================================
+# 🚀 CD - ASSISTANT SERVICE RENDER
+# ============================================================
 #
 # Repository:
-# 9394113857/assistant-service
+# 9394113857/Assistant-Service
 #
-# Application:
+# APPLICATION:
 # https://assistant-service-g24j.onrender.com/
 #
 # DEPLOYMENT TRIGGERS:
 #
-# 1. Manual deployment
-# 2. Daily deployment at 2 AM IST
-# 3. Automatic deployment after GitHub Release publication
-# 4. Exact newly released Git tag deployment
+# 1. Automatic: after the complete CI workflow succeeds for a
+#    version tag (v*). This waits for CI, including the Docker
+#    build and Docker Hub push job, to finish successfully.
 #
-# DEPLOYMENT VERSION:
+# 2. Manual: deploy the latest commit from main.
 #
-# Release event:
-#   Deploy exact published release tag.
-#
-# Manual / Scheduled:
-#   Detect latest Git tag dynamically.
-#
-#   If no tags exist:
-#   Deploy latest main branch commit.
-#
-# FEATURES:
-#
-# 1. Manual deployment
-# 2. Daily deployment at 2 AM IST
-# 3. Automatic release deployment
-# 4. Dynamic Git tag detection
-# 5. Exact release tag deployment
-# 6. No tags -> latest
-# 7. Render deployment trigger
-# 8. Application startup wait
-# 9. Automatic health verification
-# 10. Success email
-# 11. Failure email
-# 12. UTC and IST timestamps
+# IMPORTANT:
+# Render deploy hooks deploy the latest commit from the branch
+# configured in the Render service. Therefore, automatic release
+# deployment proceeds only when the version tag points to the
+# current main branch HEAD. This prevents deploying a different
+# commit while reporting the tag as the deployed version.
 #
 # REQUIRED GITHUB SECRETS:
-#
 # RENDER_DEPLOY_HOOK
 # MAIL_USERNAME
 # MAIL_PASSWORD
 # MAIL_TO
 # MAIL_CC (optional)
 #
-# APPLICATION_HEALTH_URL SECRET:
-# NOT REQUIRED
-#
-# =====================================================
+# ============================================================
 
 name: 🚀 CD - Assistant Service Render
 
-run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.event.release.tag_name || github.ref_name }} | ${{ github.actor }}
+run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.event.workflow_run.head_branch || github.ref_name }} | ${{ github.actor }}
 
-# =====================================================
+# ============================================================
 # WORKFLOW TRIGGERS
-# =====================================================
+# ============================================================
 
 on:
+  # Run only after the CI workflow has completed.
+  # The deploy job below accepts successful version-tag runs only.
+  workflow_run:
+    workflows:
+      - "🚀 CI - Assistant Service"
+    types:
+      - completed
 
-  # ---------------------------------------------------
-  # 1. MANUAL DEPLOYMENT
-  # ---------------------------------------------------
-
+  # Allow a manual deployment from the Actions tab.
   workflow_dispatch:
 
+# ============================================================
+# WORKFLOW PERMISSIONS
+# ============================================================
 
-  # ---------------------------------------------------
-  # 2. DAILY AUTOMATIC DEPLOYMENT
-  #
-  # 2 AM IST = 20:30 UTC previous day
-  # ---------------------------------------------------
+permissions:
+  contents: read
 
-  schedule:
-    - cron: "30 20 * * *"
+# Avoid two deployments running at the same time.
+concurrency:
+  group: assistant-service-render-deployment
+  cancel-in-progress: false
 
-
-  # ---------------------------------------------------
-  # 3. AUTOMATIC DEPLOYMENT AFTER RELEASE
-  #
-  # Triggered when CI successfully publishes
-  # a GitHub Release with a Git tag.
-  #
-  # The exact published release tag is deployed.
-  # ---------------------------------------------------
-
-  release:
-    types:
-      - published
-
-
-# =====================================================
+# ============================================================
 # DEPLOYMENT JOB
-# =====================================================
+# ============================================================
 
 jobs:
-
   deploy:
-
     name: 🚀 Deploy Assistant Service
 
+    # Automatic deployments are accepted only for successful
+    # CI runs whose head branch/ref is a version tag (v*).
+    # Manual runs always deploy the latest main branch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        startsWith(github.event.workflow_run.head_branch, 'v')
+      )
+
     runs-on: ubuntu-latest
-
-    timeout-minutes: 15
-
-    permissions:
-      contents: read
+    timeout-minutes: 20
 
     steps:
-
-
-      # =================================================
-      # STEP 1: CHECKOUT REPOSITORY
-      # =================================================
-
-      - name: 📦 Checkout Deployment Source
-
+      # --------------------------------------------------------
+      # STEP 1: CHECKOUT MAIN
+      # --------------------------------------------------------
+      # Render's deploy hook deploys the branch configured in
+      # Render. This workflow therefore verifies the tag against
+      # main before triggering the hook.
+      - name: 📦 Checkout Main Branch
         uses: actions/checkout@v4
-
         with:
-
-          # Release:
-          # Checkout exact newly published release tag.
-          #
-          # Manual / Schedule:
-          # Checkout main branch.
-
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
-
+          ref: main
           fetch-depth: 0
-
           fetch-tags: true
 
-
-      # =================================================
-      # STEP 2: DETECT DEPLOYMENT METADATA
-      # =================================================
-
+      # --------------------------------------------------------
+      # STEP 2: DETECT AND VERIFY DEPLOYMENT VERSION
+      # --------------------------------------------------------
       - name: 🏷️ Detect Deployment Metadata
-
         id: metadata
-
         shell: bash
-
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          ACTOR: ${{ github.actor }}
         run: |
-
-          set -e
+          set -euo pipefail
 
           echo "======================================"
           echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
           echo "======================================"
 
-          # ---------------------------------------------
-          # DETECT DEPLOYMENT SOURCE
-          # ---------------------------------------------
+          git fetch --force origin main
+          git fetch --force --tags
 
-          if [ "${{ github.event_name }}" = "release" ]
-          then
+          MAIN_SHA=$(git rev-parse refs/remotes/origin/main)
 
-            echo "Deployment Trigger: GitHub Release"
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            VERSION="$RELEASE_TAG"
 
-            # Use the exact newly published release tag.
-            VERSION="${{ github.event.release.tag_name }}"
-
-            # Verify that the requested tag exists.
-            if ! git rev-parse --verify "refs/tags/$VERSION" >/dev/null 2>&1
-            then
-
-              echo "❌ Released Git tag not found: $VERSION"
-
+            if [[ ! "$VERSION" =~ ^v[0-9] ]]; then
+              echo "❌ Expected a version tag beginning with v: $VERSION"
               exit 1
-
             fi
 
-            # Resolve the exact release tag commit.
-            COMMIT=$(git rev-list -n 1 "$VERSION")
-
-            # Ensure checkout corresponds to release commit.
-            CHECKED_OUT_COMMIT=$(git rev-parse HEAD)
-
-            if [ "$COMMIT" != "$CHECKED_OUT_COMMIT" ]
-            then
-
-              echo "❌ Release commit verification failed"
-
+            if ! git rev-parse --verify "refs/tags/$VERSION^{commit}" >/dev/null 2>&1; then
+              echo "❌ Version tag not found: $VERSION"
               exit 1
-
             fi
 
-            BRANCH="release/$VERSION"
+            TAG_SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
 
-          else
-
-            echo "Deployment Trigger: Manual / Scheduled"
-
-            # -------------------------------------------
-            # DETECT LATEST AVAILABLE GIT TAG
-            # -------------------------------------------
-
-            git fetch --force --tags
-
-            TAGS=$(git tag --sort=-v:refname)
-
-            if [ -z "$TAGS" ]
-            then
-
-              VERSION="latest"
-
-              echo "⚠️ No Git tags found"
-              echo "Deploying latest main branch commit"
-
-            else
-
-              VERSION=$(echo "$TAGS" | head -n 1)
-
-              echo "Latest Git Tag: $VERSION"
-
+            if [ "$TAG_SHA" != "$RELEASE_SHA" ]; then
+              echo "❌ Tag commit does not match the successful CI run commit."
+              echo "Tag commit: $TAG_SHA"
+              echo "CI commit:  $RELEASE_SHA"
+              exit 1
             fi
 
-            COMMIT=$(git rev-parse HEAD)
+            if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
+              echo "❌ Safety check failed: the tagged commit is not current main HEAD."
+              echo "Tagged commit: $TAG_SHA"
+              echo "Main HEAD:     $MAIN_SHA"
+              echo "Render deploy hook targets the configured branch, so deployment was stopped."
+              exit 1
+            fi
 
+            COMMIT="$TAG_SHA"
             BRANCH="main"
-
+            TRIGGER="Successful CI version-tag run"
+          else
+            VERSION="manual-main"
+            COMMIT="$MAIN_SHA"
+            BRANCH="main"
+            TRIGGER="Manual deployment"
           fi
 
-          # ---------------------------------------------
-          # DEPLOYMENT METADATA
-          # ---------------------------------------------
-
           SERVICE_URL="https://assistant-service-g24j.onrender.com/"
-
           DEPLOY_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-
           DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
-
-          # ---------------------------------------------
-          # EXPORT GITHUB ENVIRONMENT VARIABLES
-          # ---------------------------------------------
 
           {
             echo "VERSION=$VERSION"
@@ -252,68 +175,40 @@ jobs:
             echo "DEPLOY_TIME_UTC=$DEPLOY_TIME_UTC"
             echo "DEPLOY_TIME_IST=$DEPLOY_TIME_IST"
             echo "DEPLOY_STATUS=IN_PROGRESS"
+            echo "DEPLOY_TRIGGER=$TRIGGER"
           } >> "$GITHUB_ENV"
-
-          # ---------------------------------------------
-          # EXPORT STEP OUTPUTS
-          # ---------------------------------------------
 
           {
             echo "version=$VERSION"
             echo "commit=$COMMIT"
           } >> "$GITHUB_OUTPUT"
 
-          # ---------------------------------------------
-          # DISPLAY DEPLOYMENT INFORMATION
-          # ---------------------------------------------
-
-          echo "======================================"
-
-          echo "Service: Assistant Service"
-
-          echo "URL: $SERVICE_URL"
-
+          echo "Service: $SERVICE_URL"
           echo "Version: $VERSION"
-
           echo "Commit: $COMMIT"
-
           echo "Branch: $BRANCH"
-
-          echo "Trigger: ${{ github.event_name }}"
-
-          echo "Triggered By: ${{ github.actor }}"
-
-          echo "Deployment UTC: $DEPLOY_TIME_UTC"
-
-          echo "Deployment IST: $DEPLOY_TIME_IST"
-
+          echo "Trigger: $TRIGGER"
+          echo "Triggered by: $ACTOR"
+          echo "UTC: $DEPLOY_TIME_UTC"
+          echo "IST: $DEPLOY_TIME_IST"
           echo "======================================"
 
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 3: TRIGGER RENDER DEPLOYMENT
-      # =================================================
-
+      # --------------------------------------------------------
       - name: 🚀 Trigger Render Deployment
-
         env:
-
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-
+        shell: bash
         run: |
+          set -euo pipefail
 
-          set -e
-
-          if [ -z "$RENDER_DEPLOY_HOOK" ]
-          then
-
-            echo "❌ RENDER_DEPLOY_HOOK secret is missing"
-
+          if [ -z "${RENDER_DEPLOY_HOOK:-}" ]; then
+            echo "❌ RENDER_DEPLOY_HOOK secret is missing."
             exit 1
-
           fi
 
-          echo "🚀 Triggering Assistant Service deployment..."
+          echo "🚀 Triggering Render deployment..."
 
           HTTP_STATUS=$(curl \
             --silent \
@@ -324,64 +219,40 @@ jobs:
             --max-time 30 \
             "$RENDER_DEPLOY_HOOK")
 
-          echo "Render HTTP Status: $HTTP_STATUS"
+          echo "Render HTTP status: $HTTP_STATUS"
+          cat /tmp/render_response.txt || true
 
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]
-          then
-
-            echo "❌ Render deployment trigger failed"
-
-            cat /tmp/render_response.txt
-
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "❌ Render deployment trigger failed."
             exit 1
-
           fi
 
-          echo "✅ Render deployment triggered successfully"
+          echo "✅ Render deployment trigger accepted."
 
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 4: WAIT FOR APPLICATION STARTUP
-      # =================================================
-
+      # --------------------------------------------------------
       - name: ⏳ Wait For Application Startup
-
         run: |
-
-          echo "Waiting for Assistant Service startup..."
-
+          echo "Waiting 30 seconds for Render startup..."
           sleep 30
+          echo "Startup wait completed."
 
-          echo "✅ Startup wait completed"
-
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 5: APPLICATION HEALTH CHECK
-      # =================================================
-      #
-      # Fixed application URL.
-      # APPLICATION_HEALTH_URL secret not required.
-      #
+      # --------------------------------------------------------
       # Expected response: HTTP 200
       # Attempts: 10
       # Interval: 10 seconds
-      # =================================================
-
       - name: ❤️ Assistant Service Health Check
-
         shell: bash
-
         run: |
+          set -euo pipefail
 
           HEALTH_URL="https://assistant-service-g24j.onrender.com/"
+          echo "Checking: $HEALTH_URL"
 
-          echo "Checking Assistant Service..."
-
-          echo "URL: $HEALTH_URL"
-
-          for i in {1..10}
-          do
-
+          for i in {1..10}; do
             STATUS=$(curl \
               --silent \
               --output /dev/null \
@@ -389,80 +260,47 @@ jobs:
               --max-time 15 \
               "$HEALTH_URL" || true)
 
-            REMAINING=$((10 - i))
+            echo "Health check $i/10: HTTP $STATUS"
 
-            echo "❤️ Health Check Attempt $i/10"
-
-            echo "HTTP Status: $STATUS"
-
-            echo "Remaining Attempts: $REMAINING"
-
-            if [ "$STATUS" = "200" ]
-            then
-
+            if [ "$STATUS" = "200" ]; then
               echo "DEPLOY_STATUS=SUCCESS" >> "$GITHUB_ENV"
-
-              echo "🟢 Assistant Service is healthy"
-
+              echo "🟢 Assistant Service is healthy."
               exit 0
-
             fi
 
-            if [ "$i" -lt 10 ]
-            then
-
+            if [ "$i" -lt 10 ]; then
               sleep 10
-
             fi
-
           done
 
           echo "DEPLOY_STATUS=FAILED" >> "$GITHUB_ENV"
-
-          echo "🔴 Assistant Service health check failed"
-
+          echo "🔴 Assistant Service health check failed."
           exit 1
 
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 6: DEPLOYMENT SUCCESS EMAIL
-      # =================================================
-
+      # --------------------------------------------------------
       - name: 📧 Deployment Success Email
-
         if: success()
-
         uses: dawidd6/action-send-mail@v3
-
         with:
-
           server_address: smtp.gmail.com
-
           server_port: 465
-
           secure: true
-
           username: ${{ secrets.MAIL_USERNAME }}
-
           password: ${{ secrets.MAIL_PASSWORD }}
-
           subject: "🚀 CD SUCCESS | Assistant Service ${{ env.VERSION }}"
-
           to: ${{ secrets.MAIL_TO }}
-
           cc: ${{ secrets.MAIL_CC }}
-
           from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-
           body: |
-
             🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS
 
             Service:
             Assistant Service
 
             Application URL:
-            https://assistant-service-g24j.onrender.com/
+            ${{ env.SERVICE_URL }}
 
             Version:
             ${{ env.VERSION }}
@@ -474,7 +312,7 @@ jobs:
             ${{ env.BRANCH }}
 
             Trigger:
-            ${{ github.event_name }}
+            ${{ env.DEPLOY_TRIGGER }}
 
             Triggered By:
             ${{ github.actor }}
@@ -491,49 +329,27 @@ jobs:
             Deployment Result:
             SUCCESSFUL
 
-            GitHub Repository:
-            ${{ github.repository }}
-
             GitHub Actions Run:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 7: DEPLOYMENT FAILURE EMAIL
-      # =================================================
-
+      # --------------------------------------------------------
       - name: ❌ Deployment Failure Email
-
         if: failure()
-
         uses: dawidd6/action-send-mail@v3
-
         with:
-
           server_address: smtp.gmail.com
-
           server_port: 465
-
           secure: true
-
           username: ${{ secrets.MAIL_USERNAME }}
-
           password: ${{ secrets.MAIL_PASSWORD }}
-
           subject: "🚨 CD FAILED | Assistant Service"
-
           to: ${{ secrets.MAIL_TO }}
-
           cc: ${{ secrets.MAIL_CC }}
-
           from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-
           body: |
-
             🚨 ASSISTANT SERVICE DEPLOYMENT FAILED
-
-            Service:
-            Assistant Service
 
             Application URL:
             https://assistant-service-g24j.onrender.com/
@@ -563,53 +379,31 @@ jobs:
             FAILED
 
             Please check:
-
             1. GitHub Actions logs
             2. Render deployment logs
             3. Render service status
-            4. Application availability
-            5. GitHub release tag, if release-triggered
+            4. Application health endpoint
+            5. Version tag and main branch commit, if release-triggered
 
             GitHub Actions Run:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            🚨 Assistant Service requires attention.
-
-
-      # =================================================
+      # --------------------------------------------------------
       # STEP 8: FINAL DEPLOYMENT SUCCESS LOG
-      # =================================================
-
+      # --------------------------------------------------------
       - name: 🎉 Deployment Completed Successfully
-
         if: success()
-
         run: |
-
           echo "======================================"
-
-          echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
-
+          echo "🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS"
           echo "======================================"
-
           echo "Service: Assistant Service"
-
           echo "URL: $SERVICE_URL"
-
           echo "Version: $VERSION"
-
           echo "Commit: $COMMIT"
-
           echo "Branch: $BRANCH"
-
-          echo "Trigger: ${{ github.event_name }}"
-
+          echo "Trigger: $DEPLOY_TRIGGER"
           echo "Health: $DEPLOY_STATUS"
-
-          echo "Deployment: SUCCESS"
-
           echo "UTC: $DEPLOY_TIME_UTC"
-
           echo "IST: $DEPLOY_TIME_IST"
-
           echo "======================================"

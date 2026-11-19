@@ -5,30 +5,48 @@
 # Repository:
 # 9394113857/Assistant-Service
 #
-# APPLICATION:
+# Application:
 # https://assistant-service-g24j.onrender.com/
 #
-# DEPLOYMENT TRIGGERS:
+# DEPLOYMENT STRATEGY
 #
-# 1. Automatic: after the complete CI workflow succeeds for a
-#    version tag (v*). This waits for CI, including the Docker
-#    build and Docker Hub push job, to finish successfully.
+# 1. AUTOMATIC AFTER CI ON MAIN
+#    - A push to main starts the CI workflow.
+#    - CD waits until the complete CI workflow finishes.
+#    - CD deploys only when CI concludes successfully.
 #
-# 2. Manual: deploy the latest commit from main.
+# 2. AUTOMATIC AFTER CI ON A VERSION TAG
+#    - Pushing a v* tag starts CI and its Docker release job.
+#    - CD waits for the entire CI workflow, including Docker build
+#      and Docker Hub push, to finish successfully.
+#    - CD verifies the tag and its commit before deployment.
 #
-# IMPORTANT:
-# Render deploy hooks deploy the latest commit from the branch
-# configured in the Render service. Therefore, automatic release
-# deployment proceeds only when the version tag points to the
-# current main branch HEAD. This prevents deploying a different
-# commit while reporting the tag as the deployed version.
+# 3. SCHEDULED DEPLOYMENT
+#    - Daily at 2:00 AM IST (20:30 UTC on the previous day).
+#    - Deploys the current main branch HEAD.
 #
-# REQUIRED GITHUB SECRETS:
-# RENDER_DEPLOY_HOOK
-# MAIL_USERNAME
-# MAIL_PASSWORD
-# MAIL_TO
-# MAIL_CC (optional)
+# 4. MANUAL DEPLOYMENT
+#    - Run this workflow from GitHub Actions.
+#    - Deploys the current main branch HEAD.
+#
+# VERSION DETECTION
+#    - If a v* tag points to the exact main HEAD being deployed,
+#      use that version label.
+#    - Otherwise, use "latest" for the current main deployment.
+#    - Render deploy hooks deploy the configured Render branch,
+#      not an arbitrary Git tag. The workflow therefore checks
+#      tag/commit alignment instead of claiming a false tag deploy.
+#
+# REQUIRED GITHUB SECRETS
+#    RENDER_DEPLOY_HOOK
+#    MAIL_USERNAME
+#    MAIL_PASSWORD
+#    MAIL_TO
+#    MAIL_CC (optional)
+#
+# Docker secrets are used by CI, not by this CD workflow:
+#    DOCKERHUB_USERNAME
+#    DOCKERHUB_TOKEN
 #
 # ============================================================
 
@@ -41,15 +59,20 @@ run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.
 # ============================================================
 
 on:
-  # Run only after the CI workflow has completed.
-  # The deploy job below accepts successful version-tag runs only.
+  # Start CD only after the complete CI workflow has completed.
+  # The job condition below accepts successful main and v* runs.
   workflow_run:
     workflows:
       - "🚀 CI - Assistant Service"
     types:
       - completed
 
-  # Allow a manual deployment from the Actions tab.
+  # Daily deployment at 2:00 AM IST.
+  # 2:00 AM IST = 20:30 UTC on the previous day.
+  schedule:
+    - cron: "30 20 * * *"
+
+  # Manual deployment from the GitHub Actions tab.
   workflow_dispatch:
 
 # ============================================================
@@ -59,7 +82,7 @@ on:
 permissions:
   contents: read
 
-# Avoid two deployments running at the same time.
+# Prevent overlapping Render deployments.
 concurrency:
   group: assistant-service-render-deployment
   cancel-in-progress: false
@@ -71,28 +94,36 @@ concurrency:
 jobs:
   deploy:
     name: 🚀 Deploy Assistant Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-    # Automatic deployments are accepted only for successful
-    # CI runs whose head branch/ref is a version tag (v*).
-    # Manual runs always deploy the latest main branch.
+    # Run for:
+    # 1. Manual deployment.
+    # 2. Scheduled deployment.
+    # 3. Successful CI run from main.
+    # 4. Successful CI run from a version tag (v*).
+    #
+    # Skip failed CI runs, pull requests, feature branches,
+    # and unrelated tag names.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
-        startsWith(github.event.workflow_run.head_branch, 'v')
+        (
+          github.event.workflow_run.head_branch == 'main' ||
+          startsWith(github.event.workflow_run.head_branch, 'v')
+        )
       )
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       # --------------------------------------------------------
       # STEP 1: CHECKOUT MAIN
       # --------------------------------------------------------
-      # Render's deploy hook deploys the branch configured in
-      # Render. This workflow therefore verifies the tag against
-      # main before triggering the hook.
+      # Render's deploy hook is assumed to target the main branch.
+      # Always check out the latest main branch that Render will
+      # deploy, rather than checking out a tag and misreporting it.
       - name: 📦 Checkout Main Branch
         uses: actions/checkout@v4
         with:
@@ -101,15 +132,15 @@ jobs:
           fetch-tags: true
 
       # --------------------------------------------------------
-      # STEP 2: DETECT AND VERIFY DEPLOYMENT VERSION
+      # STEP 2: DETECT DEPLOYMENT VERSION AND COMMIT
       # --------------------------------------------------------
       - name: 🏷️ Detect Deployment Metadata
         id: metadata
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          CI_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
@@ -118,55 +149,96 @@ jobs:
           echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
           echo "======================================"
 
+          # Refresh main and all tags before version detection.
           git fetch --force origin main
           git fetch --force --tags
 
           MAIN_SHA=$(git rev-parse refs/remotes/origin/main)
 
+          # ----------------------------------------------------
+          # AUTOMATIC DEPLOYMENT AFTER CI
+          # ----------------------------------------------------
           if [ "$EVENT_NAME" = "workflow_run" ]; then
-            VERSION="$RELEASE_TAG"
+            if [ "$CI_HEAD_BRANCH" = "main" ]; then
+              # Main branch CI has succeeded. Deploy current main.
+              # The current main HEAD may have advanced while CI ran,
+              # so record the exact commit the Render hook will deploy.
+              COMMIT="$MAIN_SHA"
+              TRIGGER="Automatic after successful main CI"
+              VERSION="latest"
 
-            if [[ ! "$VERSION" =~ ^v[0-9] ]]; then
-              echo "❌ Expected a version tag beginning with v: $VERSION"
+              # If a version tag points exactly at current main HEAD,
+              # show that tag as the deployment version.
+              MATCHING_TAGS=$(git tag --points-at "$COMMIT" --list 'v*' --sort=-v:refname)
+              if [ -n "$MATCHING_TAGS" ]; then
+                VERSION=$(printf '%s\n' "$MATCHING_TAGS" | head -n 1)
+              fi
+
+            elif [[ "$CI_HEAD_BRANCH" =~ ^v[0-9] ]]; then
+              # CI completed for a version tag. Verify the exact tag
+              # commit matches the commit that triggered that CI run.
+              VERSION="$CI_HEAD_BRANCH"
+
+              if ! git rev-parse --verify "refs/tags/$VERSION^{commit}" >/dev/null 2>&1; then
+                echo "❌ Version tag not found: $VERSION"
+                exit 1
+              fi
+
+              TAG_SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
+
+              if [ "$TAG_SHA" != "$CI_HEAD_SHA" ]; then
+                echo "❌ Tag commit does not match the successful CI run."
+                echo "Tag commit: $TAG_SHA"
+                echo "CI commit:  $CI_HEAD_SHA"
+                exit 1
+              fi
+
+              # A Render deploy hook deploys its configured branch.
+              # Only deploy if this tag is exactly current main HEAD.
+              if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
+                echo "❌ Tag is not the current main branch HEAD."
+                echo "Tagged commit: $TAG_SHA"
+                echo "Main HEAD:     $MAIN_SHA"
+                echo "Deployment stopped to avoid deploying a different commit."
+                exit 1
+              fi
+
+              COMMIT="$TAG_SHA"
+              TRIGGER="Automatic after successful CI and Docker release"
+
+            else
+              echo "❌ Unsupported CI branch/tag: $CI_HEAD_BRANCH"
               exit 1
             fi
 
-            if ! git rev-parse --verify "refs/tags/$VERSION^{commit}" >/dev/null 2>&1; then
-              echo "❌ Version tag not found: $VERSION"
-              exit 1
-            fi
-
-            TAG_SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
-
-            if [ "$TAG_SHA" != "$RELEASE_SHA" ]; then
-              echo "❌ Tag commit does not match the successful CI run commit."
-              echo "Tag commit: $TAG_SHA"
-              echo "CI commit:  $RELEASE_SHA"
-              exit 1
-            fi
-
-            if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
-              echo "❌ Safety check failed: the tagged commit is not current main HEAD."
-              echo "Tagged commit: $TAG_SHA"
-              echo "Main HEAD:     $MAIN_SHA"
-              echo "Render deploy hook targets the configured branch, so deployment was stopped."
-              exit 1
-            fi
-
-            COMMIT="$TAG_SHA"
-            BRANCH="main"
-            TRIGGER="Successful CI version-tag run"
+          # ----------------------------------------------------
+          # MANUAL OR SCHEDULED DEPLOYMENT
+          # ----------------------------------------------------
           else
-            VERSION="manual-main"
             COMMIT="$MAIN_SHA"
-            BRANCH="main"
-            TRIGGER="Manual deployment"
+            VERSION="latest"
+
+            # Use the highest version tag that points to the exact
+            # main HEAD. Do not label a main deployment with a tag
+            # that refers to a different commit.
+            MATCHING_TAGS=$(git tag --points-at "$COMMIT" --list 'v*' --sort=-v:refname)
+            if [ -n "$MATCHING_TAGS" ]; then
+              VERSION=$(printf '%s\n' "$MATCHING_TAGS" | head -n 1)
+            fi
+
+            if [ "$EVENT_NAME" = "schedule" ]; then
+              TRIGGER="Scheduled daily deployment"
+            else
+              TRIGGER="Manual deployment"
+            fi
           fi
 
+          BRANCH="main"
           SERVICE_URL="https://assistant-service-g24j.onrender.com/"
           DEPLOY_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
 
+          # Export values for later steps and email notifications.
           {
             echo "VERSION=$VERSION"
             echo "COMMIT=$COMMIT"
@@ -244,6 +316,7 @@ jobs:
       # Expected response: HTTP 200
       # Attempts: 10
       # Interval: 10 seconds
+      # Maximum wait after startup: approximately 100 seconds.
       - name: ❤️ Assistant Service Health Check
         shell: bash
         run: |
@@ -296,9 +369,6 @@ jobs:
           body: |
             🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS
 
-            Service:
-            Assistant Service
-
             Application URL:
             ${{ env.SERVICE_URL }}
 
@@ -328,6 +398,9 @@ jobs:
 
             Deployment Result:
             SUCCESSFUL
+
+            GitHub Repository:
+            ${{ github.repository }}
 
             GitHub Actions Run:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -382,8 +455,8 @@ jobs:
             1. GitHub Actions logs
             2. Render deployment logs
             3. Render service status
-            4. Application health endpoint
-            5. Version tag and main branch commit, if release-triggered
+            4. Application health check
+            5. Version tag and main commit alignment, if tag-triggered
 
             GitHub Actions Run:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

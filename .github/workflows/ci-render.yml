@@ -19,8 +19,8 @@
 #   - Runs only for version tags (v*)
 #   - Runs only after successful CI validation
 #   - Builds and verifies the exact tagged source
-#   - Pushes only the exact version tag
-#   - Does not create or push the latest tag
+#   - Pushes the exact version tag and updates the latest tag
+#   - Updates latest only after the versioned image push succeeds
 #
 # NOTIFICATIONS:
 #   - No email notification steps or email secrets are used.
@@ -224,7 +224,8 @@ jobs:
       # --------------------------------------------------------
       # STEP 3: BUILD THE VERSIONED DOCKER IMAGE
       # --------------------------------------------------------
-      # Build only the exact version tag. No latest tag is made.
+      # Build the immutable version tag; publish latest only after
+      # the exact version tag has been pushed successfully.
       - name: 🏗️ Build Docker Image
         run: |
           docker build -t "$DOCKER_IMAGE:$IMAGE_TAG" .
@@ -250,15 +251,29 @@ jobs:
       # --------------------------------------------------------
       # STEP 6: PUSH THE EXACT VERSION TAG
       # --------------------------------------------------------
-      # Example: Git tag v1.0.5 publishes assistant-service:v1.0.5.
-      # This workflow does not push an automatically generated latest.
+      # Example: Git tag v1.0.5 publishes both:
+      # assistant-service:v1.0.5 (immutable release reference)
+      # assistant-service:latest (Render deployment reference)
       - name: 📤 Push Version Image
         run: |
           docker push "$DOCKER_IMAGE:$IMAGE_TAG"
-          echo "✅ Published: $DOCKER_IMAGE:$IMAGE_TAG"
+          echo "✅ Published version: $DOCKER_IMAGE:$IMAGE_TAG"
 
       # --------------------------------------------------------
-      # STEP 7: FINAL DOCKER RELEASE SUCCESS LOG
+      # STEP 7: UPDATE THE MOVING LATEST TAG
+      # --------------------------------------------------------
+      # Render's image-backed deploy hook redeploys the image
+      # reference configured in the Render service. Keep that
+      # reference set to assistant-service:latest.
+      # Publish latest only after the versioned image push succeeds.
+      - name: 🏷️ Tag And Push Latest Image
+        run: |
+          docker tag "$DOCKER_IMAGE:$IMAGE_TAG" "$DOCKER_IMAGE:latest"
+          docker push "$DOCKER_IMAGE:latest"
+          echo "✅ Updated deployment image: $DOCKER_IMAGE:latest"
+
+      # --------------------------------------------------------
+      # STEP 8: FINAL DOCKER RELEASE SUCCESS LOG
       # --------------------------------------------------------
       - name: 🎉 Docker Release Completed
         if: success()
@@ -267,9 +282,10 @@ jobs:
           echo "🚀 ASSISTANT SERVICE RELEASE SUCCESS"
           echo "======================================"
           echo "Version: $IMAGE_TAG"
-          echo "Published Docker Image:"
-          echo "$DOCKER_IMAGE:$IMAGE_TAG"
+          echo "Published Version Image: $DOCKER_IMAGE:$IMAGE_TAG"
+          echo "Published Deployment Image: $DOCKER_IMAGE:latest"
           echo "Docker Build: SUCCESS"
-          echo "Docker Push: SUCCESS"
+          echo "Version Push: SUCCESS"
+          echo "Latest Push: SUCCESS"
           echo "Release Status: SUCCESS"
           echo "======================================"

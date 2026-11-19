@@ -22,10 +22,8 @@
 #   - Pushes only the exact version tag
 #   - Does not create or push the latest tag
 #
-# EMAIL:
-#   - No emails for ordinary CI validation runs.
-#   - Docker release success/failure notifications only for v* tags.
-#   - Email failures do not fail CI or block the CD workflow.
+# NOTIFICATIONS:
+#   - No email notification steps or email secrets are used.
 #
 # ============================================================
 
@@ -260,98 +258,7 @@ jobs:
           echo "✅ Published: $DOCKER_IMAGE:$IMAGE_TAG"
 
       # --------------------------------------------------------
-      # STEP 7: DOCKER RELEASE SUCCESS EMAIL
-      # --------------------------------------------------------
-      - name: 📧 Docker Release Success Email
-        if: success()
-        # Email is sent only for a version-tag Docker release.
-        # A Gmail quota/SMTP failure must not mark a successful
-        # Docker build and push as failed or block the CD workflow.
-        continue-on-error: true
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚀 DOCKER RELEASE SUCCESS - Assistant Service"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚀 ASSISTANT SERVICE DOCKER RELEASE SUCCESS
-
-            Repository:
-            ${{ github.repository }}
-
-            Version:
-            ${{ github.ref_name }}
-
-            Commit:
-            ${{ github.sha }}
-
-            Docker Hub Image:
-            ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
-
-            Build:
-            SUCCESS
-
-            Image Verification:
-            SUCCESS
-
-            Docker Push:
-            SUCCESS
-
-            Release Result:
-            SUCCESSFUL
-
-      # --------------------------------------------------------
-      # STEP 8: DOCKER RELEASE FAILURE EMAIL
-      # --------------------------------------------------------
-      - name: ❌ Docker Release Failure Email
-        if: failure()
-        # Notification failure must not replace the original
-        # Docker build/push failure as the job's final result.
-        continue-on-error: true
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 DOCKER RELEASE FAILED - Assistant Service"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚨 ASSISTANT SERVICE DOCKER RELEASE FAILED
-
-            Repository:
-            ${{ github.repository }}
-
-            Version:
-            ${{ github.ref_name }}
-
-            Commit:
-            ${{ github.sha }}
-
-            Docker Image:
-            ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
-
-            Release Result:
-            FAILED
-
-            Please check GitHub Actions logs.
-
-            Verify:
-            1. Dockerfile and build logs
-            2. Docker Hub credentials
-            3. Docker Hub repository permissions
-
-      # --------------------------------------------------------
-      # STEP 9: FINAL DOCKER RELEASE SUCCESS LOG
+      # STEP 7: FINAL DOCKER RELEASE SUCCESS LOG
       # --------------------------------------------------------
       - name: 🎉 Docker Release Completed
         if: success()

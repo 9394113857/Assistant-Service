@@ -10,41 +10,34 @@
 #
 # DEPLOYMENT STRATEGY
 #
-# 1. AUTOMATIC AFTER CI ON MAIN
-#    - A push to main starts the CI workflow.
-#    - CD waits until the complete CI workflow finishes.
-#    - CD deploys only when CI concludes successfully.
+# 1. AUTOMATIC VERSION-TAG DEPLOYMENT
+#    - A v* Git tag starts the CI workflow.
+#    - CI validation must succeed.
+#    - The Docker Build and Push job must also succeed.
+#    - CD starts only after the complete CI workflow finishes.
+#    - CD verifies the exact tag and Docker release job result.
+#    - The tag must point to the current main HEAD because the
+#      configured Render deploy hook deploys the main branch.
 #
-# 2. AUTOMATIC AFTER CI ON A VERSION TAG
-#    - Pushing a v* tag starts CI and its Docker release job.
-#    - CD waits for the entire CI workflow, including Docker build
-#      and Docker Hub push, to finish successfully.
-#    - CD verifies the tag and its commit before deployment.
+# 2. MANUAL DEPLOYMENT
+#    - Run this workflow from the Actions tab.
+#    - Deploys the latest main branch commit.
 #
 # 3. SCHEDULED DEPLOYMENT
-#    - Daily at 2:00 AM IST (20:30 UTC on the previous day).
-#    - Deploys the current main branch HEAD.
+#    - Daily at 2:00 AM IST (20:30 UTC previous day).
+#    - Deploys the latest main branch commit.
 #
-# 4. MANUAL DEPLOYMENT
-#    - Run this workflow from GitHub Actions.
-#    - Deploys the current main branch HEAD.
+# IMPORTANT:
+#    - A normal push to main never triggers CD automatically.
+#    - A successful CI validation alone is not a release.
+#    - A version-tag release is eligible only after Docker push
+#      has completed successfully.
+#    - This workflow sends no email, avoiding Gmail quota errors.
 #
-# VERSION DETECTION
-#    - If a v* tag points to the exact main HEAD being deployed,
-#      use that version label.
-#    - Otherwise, use "latest" for the current main deployment.
-#    - Render deploy hooks deploy the configured Render branch,
-#      not an arbitrary Git tag. The workflow therefore checks
-#      tag/commit alignment instead of claiming a false tag deploy.
-#
-# REQUIRED GITHUB SECRETS
+# REQUIRED GITHUB SECRET:
 #    RENDER_DEPLOY_HOOK
-#    MAIL_USERNAME
-#    MAIL_PASSWORD
-#    MAIL_TO
-#    MAIL_CC (optional)
 #
-# Docker secrets are used by CI, not by this CD workflow:
+# CI workflow uses its own Docker Hub secrets:
 #    DOCKERHUB_USERNAME
 #    DOCKERHUB_TOKEN
 #
@@ -59,8 +52,9 @@ run-name: 🚀 Deploy Assistant Service | ${{ github.event_name }} | ${{ github.
 # ============================================================
 
 on:
-  # Start CD only after the complete CI workflow has completed.
-  # The job condition below accepts successful main and v* runs.
+  # Automatic CD is initiated only by completion of the CI
+  # workflow. The deployment job below checks for a v* tag
+  # and verifies that the Docker Build and Push job succeeded.
   workflow_run:
     workflows:
       - "🚀 CI - Assistant Service"
@@ -81,6 +75,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Prevent overlapping Render deployments.
 concurrency:
@@ -97,33 +92,83 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Run for:
-    # 1. Manual deployment.
-    # 2. Scheduled deployment.
-    # 3. Successful CI run from main.
-    # 4. Successful CI run from a version tag (v*).
+    # Accepted deployment sources:
+    # 1. Manual dispatch.
+    # 2. Scheduled execution.
+    # 3. A completed, successful CI workflow for a v* tag.
     #
-    # Skip failed CI runs, pull requests, feature branches,
-    # and unrelated tag names.
+    # Main-branch pushes, feature branches, pull requests,
+    # failed CI runs, and non-version tags are deliberately skipped.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
-        (
-          github.event.workflow_run.head_branch == 'main' ||
-          startsWith(github.event.workflow_run.head_branch, 'v')
-        )
+        startsWith(github.event.workflow_run.head_branch, 'v')
       )
 
     steps:
       # --------------------------------------------------------
-      # STEP 1: CHECKOUT MAIN
+      # STEP 1: VERIFY COMPLETE CI AND DOCKER RELEASE RESULTS
       # --------------------------------------------------------
-      # Render's deploy hook is assumed to target the main branch.
-      # Always check out the latest main branch that Render will
-      # deploy, rather than checking out a tag and misreporting it.
+      # workflow_run fires after the entire CI workflow completes.
+      # Query its jobs and require BOTH:
+      #   - Assistant Service CI = success
+      #   - Docker Build and Push = success
+      #
+      # A skipped Docker job (for ordinary main pushes) must never
+      # be accepted as a release.
+      - name: 🔎 Verify CI And Docker Release Jobs
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking completed CI workflow run: $CI_RUN_ID"
+
+          RESPONSE=$(curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GH_REPOSITORY/actions/runs/$CI_RUN_ID/jobs?per_page=100")
+
+          CI_RESULT=$(printf '%s' "$RESPONSE" | jq -r '
+            [.jobs[] | select(.name == "🧪 Assistant Service CI")][0].conclusion // "missing"
+          ')
+
+          DOCKER_RESULT=$(printf '%s' "$RESPONSE" | jq -r '
+            [.jobs[] | select(.name == "🐳 Docker Build and Push")][0].conclusion // "missing"
+          ')
+
+          echo "CI validation result: $CI_RESULT"
+          echo "Docker release result: $DOCKER_RESULT"
+
+          if [ "$CI_RESULT" != "success" ]; then
+            echo "❌ CI validation did not succeed. Deployment stopped."
+            exit 1
+          fi
+
+          if [ "$DOCKER_RESULT" != "success" ]; then
+            echo "❌ Docker Build and Push did not succeed."
+            echo "A skipped or failed Docker job is not a published release."
+            exit 1
+          fi
+
+          echo "✅ CI validation and Docker release both succeeded."
+
+      # --------------------------------------------------------
+      # STEP 2: CHECKOUT MAIN BRANCH
+      # --------------------------------------------------------
+      # Render's deploy hook is assumed to target main. Checkout
+      # the branch that the Render service will actually deploy.
       - name: 📦 Checkout Main Branch
         uses: actions/checkout@v4
         with:
@@ -132,15 +177,15 @@ jobs:
           fetch-tags: true
 
       # --------------------------------------------------------
-      # STEP 2: DETECT DEPLOYMENT VERSION AND COMMIT
+      # STEP 3: DETECT AND VERIFY DEPLOYMENT METADATA
       # --------------------------------------------------------
       - name: 🏷️ Detect Deployment Metadata
         id: metadata
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
-          CI_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
@@ -149,67 +194,53 @@ jobs:
           echo "🚀 ASSISTANT SERVICE DEPLOYMENT"
           echo "======================================"
 
-          # Refresh main and all tags before version detection.
+          # Refresh the main reference and Git tags.
           git fetch --force origin main
           git fetch --force --tags
 
           MAIN_SHA=$(git rev-parse refs/remotes/origin/main)
 
           # ----------------------------------------------------
-          # AUTOMATIC DEPLOYMENT AFTER CI
+          # AUTOMATIC VERSION-TAG RELEASE DEPLOYMENT
           # ----------------------------------------------------
           if [ "$EVENT_NAME" = "workflow_run" ]; then
-            if [ "$CI_HEAD_BRANCH" = "main" ]; then
-              # Main branch CI has succeeded. Deploy current main.
-              # The current main HEAD may have advanced while CI ran,
-              # so record the exact commit the Render hook will deploy.
-              COMMIT="$MAIN_SHA"
-              TRIGGER="Automatic after successful main CI"
-              VERSION="latest"
+            VERSION="$RELEASE_TAG"
 
-              # If a version tag points exactly at current main HEAD,
-              # show that tag as the deployment version.
-              MATCHING_TAGS=$(git tag --points-at "$COMMIT" --list 'v*' --sort=-v:refname)
-              if [ -n "$MATCHING_TAGS" ]; then
-                VERSION=$(printf '%s\n' "$MATCHING_TAGS" | head -n 1)
-              fi
-
-            elif [[ "$CI_HEAD_BRANCH" =~ ^v[0-9] ]]; then
-              # CI completed for a version tag. Verify the exact tag
-              # commit matches the commit that triggered that CI run.
-              VERSION="$CI_HEAD_BRANCH"
-
-              if ! git rev-parse --verify "refs/tags/$VERSION^{commit}" >/dev/null 2>&1; then
-                echo "❌ Version tag not found: $VERSION"
-                exit 1
-              fi
-
-              TAG_SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
-
-              if [ "$TAG_SHA" != "$CI_HEAD_SHA" ]; then
-                echo "❌ Tag commit does not match the successful CI run."
-                echo "Tag commit: $TAG_SHA"
-                echo "CI commit:  $CI_HEAD_SHA"
-                exit 1
-              fi
-
-              # A Render deploy hook deploys its configured branch.
-              # Only deploy if this tag is exactly current main HEAD.
-              if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
-                echo "❌ Tag is not the current main branch HEAD."
-                echo "Tagged commit: $TAG_SHA"
-                echo "Main HEAD:     $MAIN_SHA"
-                echo "Deployment stopped to avoid deploying a different commit."
-                exit 1
-              fi
-
-              COMMIT="$TAG_SHA"
-              TRIGGER="Automatic after successful CI and Docker release"
-
-            else
-              echo "❌ Unsupported CI branch/tag: $CI_HEAD_BRANCH"
+            # Only version tags such as v1.0.0 are allowed.
+            if [[ ! "$VERSION" =~ ^v[0-9] ]]; then
+              echo "❌ Invalid release version tag: $VERSION"
               exit 1
             fi
+
+            # Confirm the exact Git tag exists.
+            if ! git rev-parse --verify "refs/tags/$VERSION^{commit}" >/dev/null 2>&1; then
+              echo "❌ Version tag not found: $VERSION"
+              exit 1
+            fi
+
+            TAG_SHA=$(git rev-parse "refs/tags/$VERSION^{commit}")
+
+            # Make sure the tag references the same commit that
+            # triggered the successful CI workflow.
+            if [ "$TAG_SHA" != "$RELEASE_SHA" ]; then
+              echo "❌ Tag commit differs from the CI run commit."
+              echo "Tag commit: $TAG_SHA"
+              echo "CI commit:  $RELEASE_SHA"
+              exit 1
+            fi
+
+            # A Render deploy hook deploys the configured branch.
+            # Do not claim to deploy a tag if main points elsewhere.
+            if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
+              echo "❌ Release tag is not the current main branch HEAD."
+              echo "Tagged commit: $TAG_SHA"
+              echo "Main HEAD:     $MAIN_SHA"
+              echo "Render deployment stopped to avoid deploying a different commit."
+              exit 1
+            fi
+
+            COMMIT="$TAG_SHA"
+            TRIGGER="Successful CI and Docker version-tag release"
 
           # ----------------------------------------------------
           # MANUAL OR SCHEDULED DEPLOYMENT
@@ -218,10 +249,10 @@ jobs:
             COMMIT="$MAIN_SHA"
             VERSION="latest"
 
-            # Use the highest version tag that points to the exact
-            # main HEAD. Do not label a main deployment with a tag
-            # that refers to a different commit.
+            # Use a version label only when a v* tag points to
+            # exactly the same commit currently deployed from main.
             MATCHING_TAGS=$(git tag --points-at "$COMMIT" --list 'v*' --sort=-v:refname)
+
             if [ -n "$MATCHING_TAGS" ]; then
               VERSION=$(printf '%s\n' "$MATCHING_TAGS" | head -n 1)
             fi
@@ -238,7 +269,7 @@ jobs:
           DEPLOY_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           DEPLOY_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
 
-          # Export values for later steps and email notifications.
+          # Export deployment details for subsequent steps.
           {
             echo "VERSION=$VERSION"
             echo "COMMIT=$COMMIT"
@@ -246,14 +277,9 @@ jobs:
             echo "SERVICE_URL=$SERVICE_URL"
             echo "DEPLOY_TIME_UTC=$DEPLOY_TIME_UTC"
             echo "DEPLOY_TIME_IST=$DEPLOY_TIME_IST"
-            echo "DEPLOY_STATUS=IN_PROGRESS"
             echo "DEPLOY_TRIGGER=$TRIGGER"
+            echo "DEPLOY_STATUS=IN_PROGRESS"
           } >> "$GITHUB_ENV"
-
-          {
-            echo "version=$VERSION"
-            echo "commit=$COMMIT"
-          } >> "$GITHUB_OUTPUT"
 
           echo "Service: $SERVICE_URL"
           echo "Version: $VERSION"
@@ -266,7 +292,7 @@ jobs:
           echo "======================================"
 
       # --------------------------------------------------------
-      # STEP 3: TRIGGER RENDER DEPLOYMENT
+      # STEP 4: TRIGGER RENDER DEPLOYMENT
       # --------------------------------------------------------
       - name: 🚀 Trigger Render Deployment
         env:
@@ -280,7 +306,7 @@ jobs:
             exit 1
           fi
 
-          echo "🚀 Triggering Render deployment..."
+          echo "🚀 Triggering Assistant Service deployment..."
 
           HTTP_STATUS=$(curl \
             --silent \
@@ -302,7 +328,7 @@ jobs:
           echo "✅ Render deployment trigger accepted."
 
       # --------------------------------------------------------
-      # STEP 4: WAIT FOR APPLICATION STARTUP
+      # STEP 5: WAIT FOR APPLICATION STARTUP
       # --------------------------------------------------------
       - name: ⏳ Wait For Application Startup
         run: |
@@ -311,19 +337,17 @@ jobs:
           echo "Startup wait completed."
 
       # --------------------------------------------------------
-      # STEP 5: APPLICATION HEALTH CHECK
+      # STEP 6: VERIFY APPLICATION HEALTH
       # --------------------------------------------------------
-      # Expected response: HTTP 200
-      # Attempts: 10
-      # Interval: 10 seconds
-      # Maximum wait after startup: approximately 100 seconds.
+      # Expected response: HTTP 200.
+      # Attempts: 10; retry interval: 10 seconds.
       - name: ❤️ Assistant Service Health Check
         shell: bash
         run: |
           set -euo pipefail
 
           HEALTH_URL="https://assistant-service-g24j.onrender.com/"
-          echo "Checking: $HEALTH_URL"
+          echo "Checking application: $HEALTH_URL"
 
           for i in {1..10}; do
             STATUS=$(curl \
@@ -351,119 +375,10 @@ jobs:
           exit 1
 
       # --------------------------------------------------------
-      # STEP 6: DEPLOYMENT SUCCESS EMAIL
+      # STEP 7: FINAL DEPLOYMENT RESULT
       # --------------------------------------------------------
-      - name: 📧 Deployment Success Email
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚀 CD SUCCESS | Assistant Service ${{ env.VERSION }}"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS
-
-            Application URL:
-            ${{ env.SERVICE_URL }}
-
-            Version:
-            ${{ env.VERSION }}
-
-            Commit:
-            ${{ env.COMMIT }}
-
-            Branch:
-            ${{ env.BRANCH }}
-
-            Trigger:
-            ${{ env.DEPLOY_TRIGGER }}
-
-            Triggered By:
-            ${{ github.actor }}
-
-            Deployment Time UTC:
-            ${{ env.DEPLOY_TIME_UTC }}
-
-            Deployment Time IST:
-            ${{ env.DEPLOY_TIME_IST }}
-
-            Health Status:
-            ${{ env.DEPLOY_STATUS }}
-
-            Deployment Result:
-            SUCCESSFUL
-
-            GitHub Repository:
-            ${{ github.repository }}
-
-            GitHub Actions Run:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      # --------------------------------------------------------
-      # STEP 7: DEPLOYMENT FAILURE EMAIL
-      # --------------------------------------------------------
-      - name: ❌ Deployment Failure Email
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 CD FAILED | Assistant Service"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚨 ASSISTANT SERVICE DEPLOYMENT FAILED
-
-            Application URL:
-            https://assistant-service-g24j.onrender.com/
-
-            Version:
-            ${{ env.VERSION || 'UNKNOWN' }}
-
-            Commit:
-            ${{ env.COMMIT || github.sha }}
-
-            Branch:
-            ${{ env.BRANCH || 'main' }}
-
-            Trigger:
-            ${{ github.event_name }}
-
-            Triggered By:
-            ${{ github.actor }}
-
-            Deployment Time UTC:
-            ${{ env.DEPLOY_TIME_UTC || 'Metadata unavailable' }}
-
-            Deployment Time IST:
-            ${{ env.DEPLOY_TIME_IST || 'Metadata unavailable' }}
-
-            Deployment Result:
-            FAILED
-
-            Please check:
-            1. GitHub Actions logs
-            2. Render deployment logs
-            3. Render service status
-            4. Application health check
-            5. Version tag and main commit alignment, if tag-triggered
-
-            GitHub Actions Run:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      # --------------------------------------------------------
-      # STEP 8: FINAL DEPLOYMENT SUCCESS LOG
-      # --------------------------------------------------------
+      # No email action is used here. This avoids repeated Gmail
+      # quota failures. Result details remain visible in Actions.
       - name: 🎉 Deployment Completed Successfully
         if: success()
         run: |
@@ -479,4 +394,20 @@ jobs:
           echo "Health: $DEPLOY_STATUS"
           echo "UTC: $DEPLOY_TIME_UTC"
           echo "IST: $DEPLOY_TIME_IST"
+          echo "======================================"
+
+      # --------------------------------------------------------
+      # STEP 8: FINAL DEPLOYMENT FAILURE LOG
+      # --------------------------------------------------------
+      - name: ❌ Deployment Failed
+        if: failure()
+        run: |
+          echo "======================================"
+          echo "🚨 ASSISTANT SERVICE DEPLOYMENT FAILED"
+          echo "======================================"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Version: ${{ env.VERSION || 'not detected' }}"
+          echo "Commit: ${{ env.COMMIT || github.sha }}"
+          echo "Branch: ${{ env.BRANCH || 'main' }}"
+          echo "Please inspect the failed step above."
           echo "======================================"

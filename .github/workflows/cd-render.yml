@@ -21,6 +21,9 @@
 #      GitHub Actions jobs API before calling the Render hook.
 #    - The release tag must match the CI run commit and current
 #      main HEAD, preserving the existing release safety check.
+#    - CI publishes both the immutable version tag and the moving
+#      :latest Docker tag. Configure the Render image URL to use
+#      :latest so the deploy hook pulls the newly released image.
 #
 # 2. MANUAL DEPLOYMENT
 #    - Run this workflow from the Actions tab.
@@ -41,8 +44,10 @@
 #    - No email actions or email secrets are used in this file.
 #    - This Render service is image-backed. The deploy hook
 #      redeploys the image reference configured in Render; it
-#      does not select a Docker tag by itself. Keep that image
-#      reference aligned with the image intended for deployment.
+#      does not select a Docker tag by itself. The CI workflow
+#      updates the Docker :latest tag only after the versioned
+#      image is successfully pushed. Configure Render to use
+#      <DOCKERHUB_USERNAME>/assistant-service:latest.
 #
 # REQUIRED GITHUB SECRET:
 #    RENDER_DEPLOY_HOOK
@@ -67,7 +72,7 @@ on:
   # and verifies that the Docker Build and Push job succeeded.
   workflow_run:
     workflows:
-      - "🚀 CI - Assistant Service"
+      - "🚀 CI - Backend Assistant Service Render"
     types:
       - completed
 
@@ -298,6 +303,7 @@ jobs:
           echo "Commit: $COMMIT"
           echo "Branch: $BRANCH"
           echo "Trigger: $TRIGGER"
+          echo "Docker image expected by Render: assistant-service:latest"
           echo "Triggered by: $ACTOR"
           echo "UTC: $DEPLOY_TIME_UTC"
           echo "IST: $DEPLOY_TIME_IST"

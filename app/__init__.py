@@ -1,4 +1,6 @@
 import os
+import json
+import html
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
@@ -92,13 +94,41 @@ def create_app(testing: bool = False):
     app.register_blueprint(assistant_bp, url_prefix="/api/v1/assistant")
 
     # --------------------------
-    # Health Check
+    # Build metadata and Health Check
     # --------------------------
+    def get_build_info():
+        metadata_path = os.path.join(os.getcwd(), "build_info.json")
+        try:
+            with open(metadata_path, encoding="utf-8") as metadata_file:
+                return json.load(metadata_file)
+        except (OSError, json.JSONDecodeError):
+            return {
+                "version": os.getenv("APP_VERSION", "unknown"),
+                "commit": os.getenv("APP_COMMIT", "unknown"),
+                "branch": os.getenv("APP_BRANCH", "unknown"),
+                "build_time_utc": os.getenv("BUILD_TIME_UTC", "unknown"),
+                "build_time_ist": os.getenv("BUILD_TIME_IST", "unknown"),
+            }
+
     @app.get("/")
     def health():
-        return jsonify({
-            "status": "Assistant service running successfully."
-        }), 200
+        info = get_build_info()
+        payload = {"status": "UP", "service": "Assistant Service", "build": info}
+        if "text/html" in request.headers.get("Accept", ""):
+            return f\x27\x27\x27<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant Service</title><style>
+body {{font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;text-align:center;padding:48px 16px}}
+main {{display:inline-block;text-align:left;background:#1e293b;padding:28px 36px;border-radius:12px;max-width:720px}}
+h1 {{color:#38bdf8}} .up {{color:#22c55e;font-weight:bold}} .label {{color:#94a3b8}} code {{overflow-wrap:anywhere}}
+</style></head><body><main><h1>🚀 Assistant Service</h1><p class="up">🟢 UP</p>
+<p><span class="label">Version:</span> {html.escape(str(info.get("version", "unknown")))}</p>
+<p><span class="label">Commit:</span> <code>{html.escape(str(info.get("commit", "unknown")))}</code></p>
+<p><span class="label">Branch:</span> {html.escape(str(info.get("branch", "unknown")))}</p>
+<p><span class="label">UTC:</span> {html.escape(str(info.get("build_time_utc", "unknown")))}</p>
+<p><span class="label">IST:</span> {html.escape(str(info.get("build_time_ist", "unknown")))}</p>
+</main></body></html>\x27\x27\x27, 200
+        return jsonify(payload), 200
 
     app.logger.info("Assistant service started successfully.")
     return app

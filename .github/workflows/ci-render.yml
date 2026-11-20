@@ -23,7 +23,8 @@
 #   - Updates latest only after the versioned image push succeeds
 #
 # NOTIFICATIONS:
-#   - No email notification steps or email secrets are used.
+#   - CI validation emails report validation success/failure only.
+#   - Docker emails are sent only after both image pushes succeed.
 #
 # ============================================================
 
@@ -155,6 +156,55 @@ jobs:
           PY
 
       # --------------------------------------------------------
+      # CI validation notification: dependencies, required files,
+      # and Python syntax only. Unit tests remain excluded.
+      - name: 📧 CI Validation Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ CI PASSED | Assistant Service | ${{ github.ref_name }}"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            ✅ ASSISTANT SERVICE CI VALIDATION PASSED
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Ref: ${{ github.ref }}
+            Actor: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Checks: dependency installation, required files, Python syntax.
+            Unit tests are currently excluded from this workflow.
+            This is not a Docker release or deployment confirmation.
+
+      - name: 📧 CI Validation Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 CI FAILED | Assistant Service | ${{ github.ref_name }}"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            🚨 ASSISTANT SERVICE CI VALIDATION FAILED
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Ref: ${{ github.ref }}
+            Actor: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Inspect the failed validation step in GitHub Actions.
+
+      # --------------------------------------------------------
       # STEP 6: FINAL CI SUCCESS LOG
       # --------------------------------------------------------
       - name: ✅ CI Completed Successfully
@@ -273,7 +323,35 @@ jobs:
           echo "✅ Updated deployment image: $DOCKER_IMAGE:latest"
 
       # --------------------------------------------------------
-      # STEP 8: FINAL DOCKER RELEASE SUCCESS LOG
+      # STEP 8: GENERATE LIVE DEPLOYMENT BUILD METADATA
+      # --------------------------------------------------------
+      - name: 🧾 Generate Deployment Build Metadata
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          export BUILD_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          export BUILD_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
+          python - <<'PY'
+          import json
+          import os
+
+          info = {
+              "version": os.environ["IMAGE_TAG"],
+              "commit": os.environ["GITHUB_SHA"],
+              "branch": "main",
+              "build_time_utc": os.environ["BUILD_TIME_UTC"],
+              "build_time_ist": os.environ["BUILD_TIME_IST"],
+          }
+          with open("build_info.json", "w", encoding="utf-8") as output:
+              json.dump(info, output, indent=2)
+              output.write("\\n")
+          print(json.dumps(info, indent=2))
+          PY
+
+      # --------------------------------------------------------
+      # STEP 9: FINAL DOCKER RELEASE SUCCESS LOG
       # --------------------------------------------------------
       - name: 🎉 Docker Release Completed
         if: success()
@@ -284,8 +362,54 @@ jobs:
           echo "Version: $IMAGE_TAG"
           echo "Published Version Image: $DOCKER_IMAGE:$IMAGE_TAG"
           echo "Published Deployment Image: $DOCKER_IMAGE:latest"
+          echo "Build metadata: build_info.json included in image"
           echo "Docker Build: SUCCESS"
           echo "Version Push: SUCCESS"
           echo "Latest Push: SUCCESS"
           echo "Release Status: SUCCESS"
           echo "======================================"
+
+      - name: 📧 Docker Release Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🐳 DOCKER RELEASE SUCCESS | Assistant Service | ${{ github.ref_name }}"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            🐳 ASSISTANT SERVICE DOCKER RELEASE SUCCESS
+            Version: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Version image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
+            Deployment image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:latest
+            Registry: https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Both version and latest image pushes succeeded.
+            This confirms publishing only, not Render deployment.
+
+      - name: 📧 Docker Release Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 DOCKER RELEASE FAILED | Assistant Service | ${{ github.ref_name }}"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            🚨 ASSISTANT SERVICE DOCKER RELEASE FAILED
+            Version: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Inspect Docker build, verification, registry login, and push logs.

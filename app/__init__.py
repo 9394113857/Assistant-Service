@@ -115,7 +115,7 @@ def create_app(testing: bool = False):
         info = get_build_info()
         payload = {"status": "UP", "service": "Assistant Service", "build": info}
         if "text/html" in request.headers.get("Accept", ""):
-            return f'''''''''<!doctype html>
+            return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assistant Service</title><style>
 body {{font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;text-align:center;padding:48px 16px}}
@@ -127,7 +127,7 @@ h1 {{color:#38bdf8}} .up {{color:#22c55e;font-weight:bold}} .label {{color:#94a3
 <p><span class="label">Branch:</span> {html.escape(str(info.get("branch", "unknown")))}</p>
 <p><span class="label">UTC:</span> {html.escape(str(info.get("build_time_utc", "unknown")))}</p>
 <p><span class="label">IST:</span> {html.escape(str(info.get("build_time_ist", "unknown")))}</p>
-</main></body></html>''''''''', 200
+</main></body></html>''', 200
         return jsonify(payload), 200
 
     app.logger.info("Assistant service started successfully.")

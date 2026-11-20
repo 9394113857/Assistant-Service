@@ -41,7 +41,7 @@
 #      (CI validation and Docker Build and Push) succeed.
 #    - Manual and scheduled deployments remain independent of
 #      the CI/Docker release gate.
-#    - No email actions or email secrets are used in this file.
+#    - CD emails are sent only after health and live-commit verification.
 #    - This Render service is image-backed. The deploy hook
 #      redeploys the image reference configured in Render; it
 #      does not select a Docker tag by itself. The CI workflow
@@ -355,48 +355,84 @@ jobs:
           echo "Startup wait completed."
 
       # --------------------------------------------------------
-      # STEP 6: VERIFY APPLICATION HEALTH
+      # STEP 6: VERIFY APPLICATION HEALTH AND DEPLOYED BUILD
       # --------------------------------------------------------
-      # Expected response: HTTP 200.
-      # Attempts: 10; retry interval: 10 seconds.
+      # Require HTTP 200 and a live build.commit matching the
+      # intended commit; a generic 200 alone is not deployment proof.
       - name: ❤️ Assistant Service Health Check
         shell: bash
         run: |
           set -euo pipefail
 
           HEALTH_URL="https://assistant-service-g24j.onrender.com/"
+          EXPECTED_COMMIT="$COMMIT"
           echo "Checking application: $HEALTH_URL"
+          echo "Expected deployed commit: $EXPECTED_COMMIT"
 
-          for i in {1..10}; do
-            STATUS=$(curl \
-              --silent \
-              --output /dev/null \
-              --write-out "%{http_code}" \
-              --max-time 15 \
-              "$HEALTH_URL" || true)
+          for i in {1..15}; do
+            HTTP_CODE=$(curl --silent --show-error \\
+              --output /tmp/assistant-health.json \\
+              --write-out "%{http_code}" --max-time 20 "$HEALTH_URL" || true)
+            echo "Health check $i/15: HTTP $HTTP_CODE"
 
-            echo "Health check $i/10: HTTP $STATUS"
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Live health response:"
+              cat /tmp/assistant-health.json
+              LIVE_COMMIT=$(jq -r '.build.commit // empty' /tmp/assistant-health.json 2>/dev/null || true)
+              LIVE_VERSION=$(jq -r '.build.version // empty' /tmp/assistant-health.json 2>/dev/null || true)
 
-            if [ "$STATUS" = "200" ]; then
-              echo "DEPLOY_STATUS=SUCCESS" >> "$GITHUB_ENV"
-              echo "🟢 Assistant Service is healthy."
-              exit 0
+              if [ "$LIVE_COMMIT" = "$EXPECTED_COMMIT" ]; then
+                {
+                  echo "DEPLOY_STATUS=SUCCESS"
+                  echo "LIVE_COMMIT=$LIVE_COMMIT"
+                  echo "LIVE_VERSION=$LIVE_VERSION"
+                  echo "HEALTH_HTTP_CODE=$HTTP_CODE"
+                } >> "$GITHUB_ENV"
+                echo "🟢 Service is UP and serving the expected commit."
+                exit 0
+              fi
+              echo "Live commit mismatch: live=${LIVE_COMMIT:-metadata-missing}, expected=$EXPECTED_COMMIT"
             fi
-
-            if [ "$i" -lt 10 ]; then
-              sleep 10
-            fi
+            if [ "$i" -lt 15 ]; then sleep 10; fi
           done
 
           echo "DEPLOY_STATUS=FAILED" >> "$GITHUB_ENV"
-          echo "🔴 Assistant Service health check failed."
+          echo "🔴 Service did not report the expected deployed commit."
           exit 1
 
       # --------------------------------------------------------
-      # STEP 7: FINAL DEPLOYMENT RESULT
+      # STEP 7: DEPLOYMENT SUCCESS EMAIL
       # --------------------------------------------------------
-      # No email action is used here. Result details remain
-      # visible in the GitHub Actions run summary and logs.
+      - name: 📧 Deployment Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚀 CD SUCCESS | Assistant Service ${{ env.VERSION }}"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            🚀 ASSISTANT SERVICE DEPLOYMENT SUCCESS
+            Service: Assistant Service
+            URL: ${{ env.SERVICE_URL }}
+            Health: ${{ env.DEPLOY_STATUS }} (HTTP ${{ env.HEALTH_HTTP_CODE }})
+            Version: ${{ env.VERSION }}
+            Live Version: ${{ env.LIVE_VERSION }}
+            Expected Commit: ${{ env.COMMIT }}
+            Live Commit: ${{ env.LIVE_COMMIT }}
+            Branch: ${{ env.BRANCH }}
+            Trigger: ${{ env.DEPLOY_TRIGGER }}
+            Triggered By: ${{ github.actor }}
+            Deploy Time UTC: ${{ env.DEPLOY_TIME_UTC }}
+            Deploy Time IST: ${{ env.DEPLOY_TIME_IST }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # STEP 8: FINAL DEPLOYMENT RESULT
       - name: 🎉 Deployment Completed Successfully
         if: success()
         run: |
@@ -415,7 +451,35 @@ jobs:
           echo "======================================"
 
       # --------------------------------------------------------
-      # STEP 8: FINAL DEPLOYMENT FAILURE LOG
+      # STEP 9: DEPLOYMENT FAILURE EMAIL
+      # --------------------------------------------------------
+      - name: 📧 Deployment Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 CD FAILED | Assistant Service"
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            🚨 ASSISTANT SERVICE DEPLOYMENT FAILED
+            Service: Assistant Service
+            URL: https://assistant-service-g24j.onrender.com/
+            Version: ${{ env.VERSION || 'not detected' }}
+            Expected Commit: ${{ env.COMMIT || github.sha }}
+            Branch: ${{ env.BRANCH || 'main' }}
+            Trigger: ${{ github.event_name }}
+            Triggered By: ${{ github.actor }}
+            Status: ${{ env.DEPLOY_STATUS || 'FAILED' }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Inspect GitHub Actions and Render deployment logs.
+
+      # STEP 10: FINAL DEPLOYMENT FAILURE LOG
       # --------------------------------------------------------
       - name: ❌ Deployment Failed
         if: failure()

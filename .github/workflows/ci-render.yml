@@ -272,6 +272,34 @@ jobs:
           echo "======================================"
 
       # --------------------------------------------------------
+      # STEP 3: GENERATE LIVE DEPLOYMENT BUILD METADATA
+      # --------------------------------------------------------
+      - name: 🧾 Generate Deployment Build Metadata
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          export BUILD_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          export BUILD_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
+          python - <<'PY'
+          import json
+          import os
+
+          info = {
+              "version": os.environ["IMAGE_TAG"],
+              "commit": os.environ["GITHUB_SHA"],
+              "branch": "main",
+              "build_time_utc": os.environ["BUILD_TIME_UTC"],
+              "build_time_ist": os.environ["BUILD_TIME_IST"],
+          }
+          with open("build_info.json", "w", encoding="utf-8") as output:
+              json.dump(info, output, indent=2)
+              output.write("\\n")
+          print(json.dumps(info, indent=2))
+          PY
+
+      # --------------------------------------------------------
       # STEP 3: BUILD THE VERSIONED DOCKER IMAGE
       # --------------------------------------------------------
       # Build the immutable version tag; publish latest only after
@@ -321,34 +349,6 @@ jobs:
           docker tag "$DOCKER_IMAGE:$IMAGE_TAG" "$DOCKER_IMAGE:latest"
           docker push "$DOCKER_IMAGE:latest"
           echo "✅ Updated deployment image: $DOCKER_IMAGE:latest"
-
-      # --------------------------------------------------------
-      # STEP 8: GENERATE LIVE DEPLOYMENT BUILD METADATA
-      # --------------------------------------------------------
-      - name: 🧾 Generate Deployment Build Metadata
-        shell: bash
-        env:
-          IMAGE_TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          export BUILD_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          export BUILD_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
-          python - <<'PY'
-          import json
-          import os
-
-          info = {
-              "version": os.environ["IMAGE_TAG"],
-              "commit": os.environ["GITHUB_SHA"],
-              "branch": "main",
-              "build_time_utc": os.environ["BUILD_TIME_UTC"],
-              "build_time_ist": os.environ["BUILD_TIME_IST"],
-          }
-          with open("build_info.json", "w", encoding="utf-8") as output:
-              json.dump(info, output, indent=2)
-              output.write("\\n")
-          print(json.dumps(info, indent=2))
-          PY
 
       # --------------------------------------------------------
       # STEP 9: FINAL DOCKER RELEASE SUCCESS LOG

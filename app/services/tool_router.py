@@ -413,13 +413,13 @@ def handle_product_request(message=""):
         # this marked section as a collapsed, customer-controlled disclosure.
         related = _related_products(products[:10], catalogue=all_products)
         if related:
-            result += "\\n__RELATED_PRODUCTS__\\nYou may also need (optional):\\n"
+            result += "\n__RELATED_PRODUCTS__\nYou may also need (optional):\n"
             for product in related:
                 name = product.get("name", "Unknown")
                 price = _format_product_price(product.get("price"))
                 category = product.get("category")
                 category_label = f" | Category: {category}" if category else ""
-                result += f"- {name} | Price: {price}{category_label}\\n"
+                result += f"- {name} | Price: {price}{category_label}\n"
         return result.rstrip()
 
     except requests.Timeout:

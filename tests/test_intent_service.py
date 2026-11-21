@@ -1,6 +1,9 @@
 import unittest
+from unittest.mock import patch
 
+from app.services.assistant_orchestrator import LOGIN_REQUIRED_INTENTS
 from app.services.intent_service import detect_intent
+from app.services.public_information_service import get_general_knowledge
 from app.services.followup_resolver import resolve_followup
 from app.services.public_information_service import _query_after_command
 
@@ -53,6 +56,26 @@ class IntentServiceTests(unittest.TestCase):
             detect_intent("What is the capital of Japan?")[0],
             "general_knowledge",
         )
+
+    @patch("app.services.public_information_service._get_json")
+    def test_capital_question_returns_a_cited_wikipedia_answer(self, mock_get_json):
+        mock_get_json.side_effect = [
+            {"query": {"search": [{"title": "Tokyo"}]}},
+            {
+                "extract": "Tokyo is the capital of Japan.",
+                "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Tokyo"}},
+            },
+        ]
+        response = get_general_knowledge("What is the capital of Japan?")
+        self.assertIn("The capital of Japan is Tokyo.", response)
+        self.assertIn("https://en.wikipedia.org/wiki/Tokyo", response)
+        self.assertEqual(mock_get_json.call_count, 2)
+
+    def test_public_product_intents_do_not_require_login(self):
+        self.assertNotIn("product_category", LOGIN_REQUIRED_INTENTS)
+        self.assertNotIn("cheaper_product", LOGIN_REQUIRED_INTENTS)
+        self.assertIn("recommend_product", LOGIN_REQUIRED_INTENTS)
+        self.assertIn("show_orders", LOGIN_REQUIRED_INTENTS)
 
     def test_natural_language_greetings_and_about_are_recognized(self):
         self.assertEqual(detect_intent("hello bro")[0], "greeting")

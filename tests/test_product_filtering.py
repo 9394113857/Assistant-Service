@@ -54,7 +54,7 @@ class ProductFilteringTests(unittest.TestCase):
         response = tool_router.handle_product_request("Show me headphones")
         self.assertEqual(
             response,
-            "I couldn't find products matching that category.",
+            "I couldn't find products matching that category in the current catalogue.",
         )
 
     def test_laptop_search_returns_laptops(self):

@@ -90,6 +90,12 @@ def _matches_product_query(product, message, catalog_categories=None):
         if re.search(pattern, text):
             requested_aliases.update(aliases)
 
+    # Keep major-product searches from accidentally returning their accessories
+    # as primary products (for example, a phone case in a smartphone search).
+    requested_family = _major_product_family({"name": text})
+    if requested_family:
+        return _major_product_family(product) == requested_family
+
     if requested_aliases:
         return bool(product_words.intersection(requested_aliases))
 
@@ -240,7 +246,7 @@ def _major_product_family(product):
     patterns = (
         ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?|phones?|mobiles?)\b"),
         ("laptop", r"\b(laptop|notebook computer)\b"),
-        ("tv", r"\b(tv|television|smart tv)\\b"),
+        ("tv", r"\b(tvs?|televisions?)\b"),
         ("monitor", r"\b(monitor|display)\\b"),
         ("printer", r"\b(printer)\\b"),
         ("camera", r"\b(camera|dslr|mirrorless)\\b"),

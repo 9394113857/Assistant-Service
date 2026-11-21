@@ -35,7 +35,43 @@ def _format_product_price(value):
 
 
 def _matches_product_query(product, message):
-    """Match meaningful query words against product name/category."""
+    """Match a requested product category without fuzzy cross-category matches."""
+    category_aliases = {
+        "smartphones": {"smartphone", "phone", "mobile", "cellphone"},
+        "phones": {"phone", "mobile", "smartphone", "cellphone"},
+        "mobiles": {"mobile", "phone", "smartphone", "cellphone"},
+        "laptops": {"laptop", "computer", "notebook"},
+        "computers": {"computer", "laptop", "notebook"},
+        "headphones": {"headphone", "headset", "earphone", "earbud"},
+        "earbuds": {"earbud", "earphone", "headphone"},
+        "tablets": {"tablet", "ipad"},
+        "watches": {"watch", "smartwatch"},
+        "electronics": {"electronics"},
+        "accessories": {"accessory", "accessories"},
+    }
+
+    requested = re.findall(
+        r"\\b(smartphones?|phones?|mobiles?|laptops?|computers?|"
+        r"headphones?|earbuds?|tablets?|watches?|electronics|accessories)\\b",
+        (message or "").lower(),
+    )
+    product_text = " ".join(
+        str(product.get(field, "") or "")
+        for field in ("name", "category")
+    ).lower()
+    product_words = {
+        word.rstrip("s") for word in re.findall(r"[a-z0-9]+", product_text)
+    }
+
+    if requested:
+        for term in requested:
+            normalized = term.rstrip("s")
+            aliases = category_aliases.get(term, {normalized})
+            if product_words.intersection(aliases):
+                return True
+        return False
+
+    # For non-category searches, retain conservative name/category word matching.
     ignored_words = {
         "show", "list", "find", "get", "display", "all", "available",
         "some", "me", "the", "for", "with", "please", "i", "want",
@@ -43,7 +79,7 @@ def _matches_product_query(product, message):
         "under", "below", "within", "budget", "cheap", "cheapest", "cheaper",
         "affordable", "lowest", "price", "low", "less", "than", "up", "to",
         "recommend", "recommendation", "suggest", "do", "you", "have", "any",
-        "is", "your", "what", "are", "some", "a", "an", "for", "programming",
+        "is", "your", "what", "are", "a", "an", "programming",
         "office", "work", "daily", "usage",
     }
     query_words = {
@@ -53,21 +89,7 @@ def _matches_product_query(product, message):
     }
     if not query_words:
         return True
-
-    product_text = " ".join(
-        str(product.get(field, "") or "")
-        for field in ("name", "category")
-    ).lower()
-    product_words = {
-        word.rstrip("s") for word in re.findall(r"[a-z0-9]+", product_text)
-    }
-    return any(
-        query_word in product_words
-        or any(query_word in product_word or product_word in query_word
-               for product_word in product_words)
-        for query_word in query_words
-    )
-
+    return bool(query_words.intersection(product_words))
 
 def _extract_price_limit(message):
     """Extract an explicit rupee budget, supporting 20,000, 20k and 1 lakh."""

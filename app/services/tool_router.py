@@ -290,7 +290,9 @@ def handle_product_request(message=""):
         if not products:
             return "No products available right now."
 
-        all_products = products\n\n        normalized_message = (message or "").lower()
+        all_products = products
+
+        normalized_message = (message or "").lower()
         catalog_categories = list(dict.fromkeys(
             product.get("category")
             for product in products

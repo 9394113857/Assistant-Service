@@ -25,6 +25,18 @@ def _product_price(product):
         return None
 
 
+def _format_product_price(value):
+    """Format product prices consistently as Indian Rupees."""
+    amount = _product_price({"price": value})
+    if amount is None:
+        return str(value) if value is not None else "N/A"
+
+    formatted_amount = (
+        f"{amount:,.0f}" if amount.is_integer() else f"{amount:,.2f}"
+    )
+    return f"₹{formatted_amount}"
+
+
 def _matches_product_query(product, message):
     """Match meaningful query words against the product name/category."""
     ignored_words = {
@@ -81,8 +93,8 @@ def handle_product_request(message=""):
 
         normalized_message = (message or "").lower()
         category_terms = re.findall(
-            r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
-            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b",
+            r"\\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
+            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\\b",
             normalized_message,
         )
         if category_terms:
@@ -95,7 +107,7 @@ def handle_product_request(message=""):
             products = filtered_products
 
         if re.search(
-            r"\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\b",
+            r"\\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\\b",
             normalized_message,
         ):
             products = sorted(
@@ -106,13 +118,13 @@ def handle_product_request(message=""):
                 ),
             )
 
-        result = "Here are the matching products:\n"
+        result = "Here are the matching products:\\n"
         for product in products[:5]:
             name = product.get("name", "Unknown")
-            price = product.get("price", "N/A")
+            price = _format_product_price(product.get("price"))
             category = product.get("category")
             category_label = f" | Category: {category}" if category else ""
-            result += f"- {name} | Price: {price}{category_label}\n"
+            result += f"- {name} | Price: {price}{category_label}\\n"
 
         return result.rstrip()
 
@@ -154,14 +166,14 @@ def handle_order_request(user_id: int):
         if not orders:
             return "You have no orders."
 
-        result = "Your recent orders:\n"
+        result = "Your recent orders:\\n"
 
         for o in orders[:5]:
 
             order_id = o.get("order_id") or o.get("id")
             status = o.get("status", "unknown")
 
-            result += f"- Order #{order_id} | Status: {status}\n"
+            result += f"- Order #{order_id} | Status: {status}\\n"
 
         return result
 
@@ -196,13 +208,13 @@ def handle_recommendation_request(user_id: int):
         if not recos:
             return "No recommendations available yet."
 
-        result = "Recommended for you:\n"
+        result = "Recommended for you:\\n"
 
         for r in recos[:5]:
 
             product_id = r.get("product_id")
 
-            result += f"- Product ID: {product_id}\n"
+            result += f"- Product ID: {product_id}\\n"
 
         return result
 

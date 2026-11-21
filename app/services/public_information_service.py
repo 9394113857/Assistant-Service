@@ -10,6 +10,20 @@ logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = (3, 10)
 
+# Stable answers for commonly requested country capitals. These avoid
+# transient third-party API failures for high-frequency factual questions.
+KNOWN_COUNTRY_CAPITALS = {
+    "japan": ("Tokyo", "https://www.mofa.go.jp/"),
+    "india": ("New Delhi", "https://knowindia.india.gov.in/"),
+    "france": ("Paris", "https://www.diplomatie.gouv.fr/"),
+    "australia": ("Canberra", "https://www.dfat.gov.au/"),
+    "germany": ("Berlin", "https://www.bundesregierung.de/"),
+    "united states": ("Washington, D.C.", "https://www.usa.gov/"),
+    "united states of america": ("Washington, D.C.", "https://www.usa.gov/"),
+    "usa": ("Washington, D.C.", "https://www.usa.gov/"),
+    "us": ("Washington, D.C.", "https://www.usa.gov/"),
+}
+
 
 def _get_json(url, params=None, headers=None):
     response = requests.get(
@@ -103,7 +117,10 @@ def _get_capital_from_wikidata(country):
 
 
 def _get_country_capital(country):
-    """Use REST Countries first, then Wikidata if the primary provider fails."""
+    """Use stable verified answers first, then REST Countries and Wikidata."""
+    known_result = KNOWN_COUNTRY_CAPITALS.get(country.strip().casefold())
+    if known_result:
+        return known_result
     try:
         data = _get_json(
             f"https://restcountries.com/v3.1/name/{quote(country)}",

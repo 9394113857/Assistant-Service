@@ -82,11 +82,7 @@ class IntentServiceTests(unittest.TestCase):
     @patch("app.services.public_information_service._get_json")
     def test_capital_lookup_falls_back_to_wikidata(self, mock_get_json):
         mock_get_json.side_effect = [
-            [
-                {"name": {"common": "Japan", "official": "Japan"},
-                 "capital": ["Tokyo"]}
-            ],
-            requests.ConnectionError('primary provider unavailable'),
+            requests.ConnectionError("primary provider unavailable"),
             {
                 "search": [
                     {"id": "Q17", "label": "Japan", "description": "country in East Asia"}

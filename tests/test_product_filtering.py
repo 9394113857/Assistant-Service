@@ -143,6 +143,14 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertIn("__RELATED_PRODUCTS__", response)
         self.assertIn("TV Soundbar", response)
 
+    def test_generic_catalogue_browse_does_not_trigger_cross_sell(self):
+        response = tool_router.handle_product_request("Show me all products")
+        self.assertNotIn("__RELATED_PRODUCTS__", response)
+
+    def test_no_match_budget_does_not_show_related_addons(self):
+        response = tool_router.handle_product_request("Show smartphones under ₹10,000")
+        self.assertNotIn("__RELATED_PRODUCTS__", response)
+
     def test_small_accessory_search_does_not_trigger_more_suggestions(self):
         response = tool_router.handle_product_request("Show me Wireless Mouse")
         self.assertIn("Wireless Mouse", response)

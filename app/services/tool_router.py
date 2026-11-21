@@ -141,7 +141,7 @@ def _extract_price_bounds(message):
 
     # Also accept shorthand ranges such as "₹20k-₹50k".
     shorthand_match = re.search(
-        r"\b" + amount + r"\s*(?:-|to)\s*" + amount + r"\b",
+        r"(?<![a-z0-9])" + amount + r"\s*(?:-|to)\s*" + amount + r"\b",
         text,
     )
     if shorthand_match:
@@ -155,8 +155,9 @@ def _extract_price_bounds(message):
         }
 
     bound_match = re.search(
-        r"\b(under|below|less than|up to|within|maximum|max|"
-        r"above|over|more than|greater than|at least|minimum|min)\b\s*" + amount,
+        r"\b(under|below|less than|up to|within|maximum(?: budget)?(?: of)?|"
+        r"max(?: budget)?(?: of)?|above|over|more than|greater than|at least|"
+        r"minimum(?: budget)?(?: of)?|min(?: budget)?(?: of)?|budget(?: of)?)\b\s*" + amount,
         text,
     )
     if not bound_match:

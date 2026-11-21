@@ -142,7 +142,7 @@ def get_general_knowledge(message):
     """Answer factual questions; resolve country capitals with resilient providers."""
     question = (message or "").strip()
     capital_match = re.search(
-        r"\\bcapital of\\s+(.+?)[?.!]*$",
+        r"\bcapital of\s+(.+?)[?.!]*$",
         question,
         flags=re.IGNORECASE,
     )
@@ -155,10 +155,10 @@ def get_general_knowledge(message):
                 logger.error("No capital result from REST Countries or Wikidata for %s", country)
                 return "General information lookup is temporarily unavailable. Please try again."
             capital, source_url = result
-            return f"The capital of {country} is {capital}.\\n\\nSource: {source_url}"
+            return f"The capital of {country} is {capital}.\n\nSource: {source_url}"
 
         search_term = re.sub(
-            r"^(please\\s+)?(can you\\s+)?(tell me\\s+)?(what is|what are|who is|where is|when was|how does|why does)\\s+",
+            r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is|what are|who is|where is|when was|how does|why does)\s+",
             "",
             question,
             flags=re.IGNORECASE,
@@ -195,7 +195,7 @@ def get_general_knowledge(message):
         if not extract:
             return f"I found '{title}', but couldn't retrieve a summary."
         answer = f"{title}: {extract[:1200]}"
-        return f"{answer}\\n\\nSource: {page_url}" if page_url else answer
+        return f"{answer}\n\nSource: {page_url}" if page_url else answer
 
     except (requests.RequestException, ValueError, TypeError, KeyError):
         logger.exception("General information lookup failed for question: %s", question)

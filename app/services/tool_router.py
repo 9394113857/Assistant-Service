@@ -202,6 +202,79 @@ def _extract_price_limit(message):
     return bounds["upper"] if bounds["upper"] is not None else bounds["lower"]
 
 
+
+# Cross-sell only from major products. Small accessories never trigger another
+# recommendation carousel, which keeps the shopping conversation lightweight.
+_RELATED_PRODUCT_TERMS = {
+    "smartphone": ("case", "cover", "screen protector", "tempered glass", "charger", "power bank", "earbuds", "headphones"),
+    "laptop": ("mouse", "keyboard", "laptop bag", "sleeve", "cooling pad", "usb hub", "laptop stand", "external drive"),
+    "tv": ("soundbar", "speaker", "hdmi cable", "tv mount", "wall mount", "streaming stick"),
+    "monitor": ("monitor arm", "hdmi cable", "webcam", "speaker"),
+    "printer": ("ink", "toner", "printer paper"),
+    "camera": ("tripod", "memory card", "camera bag", "camera lens"),
+    "gaming console": ("controller", "gaming headset", "game"),
+    "projector": ("projector screen", "hdmi cable", "mount", "speaker"),
+}
+
+def _major_product_family(product):
+    text = " ".join(str(product.get(field, "") or "") for field in ("name", "category", "description")).lower()
+    patterns = (
+        ("smartphone", r"\\b(smart ?phone|mobile phone|cell ?phone)\\b"),
+        ("laptop", r"\\b(laptop|notebook computer)\\b"),
+        ("tv", r"\\b(tv|television|smart tv)\\b"),
+        ("monitor", r"\\b(monitor|display)\\b"),
+        ("printer", r"\\b(printer)\\b"),
+        ("camera", r"\\b(camera|dslr|mirrorless)\\b"),
+        ("gaming console", r"\\b(playstation|xbox|nintendo switch|gaming console)\\b"),
+        ("projector", r"\\b(projector)\\b"),
+    )
+    for family, pattern in patterns:
+        if re.search(pattern, text):
+            return family
+    return None
+
+
+def _related_products(products, catalogue):
+    """Return a few in-catalogue add-ons for selected major products only."""
+    families = {
+        family
+        for product in products
+        if isinstance(product, dict)
+        for family in [_major_product_family(product)]
+        if family
+    }
+    if not families:
+        return []
+
+    terms = tuple(term for family in families for term in _RELATED_PRODUCT_TERMS[family])
+    selected_ids = {str(p.get("id")) for p in products if p.get("id") is not None}
+    selected_names = {str(p.get("name", "")).strip().lower() for p in products}
+    suggestions = []
+    seen = set()
+    for candidate in catalogue:
+        if not isinstance(candidate, dict):
+            continue
+        candidate_id = str(candidate.get("id")) if candidate.get("id") is not None else None
+        candidate_name = str(candidate.get("name", "")).strip()
+        candidate_text = " ".join(
+            str(candidate.get(field, "") or "")
+            for field in ("name", "category", "description")
+        ).lower()
+        if not candidate_name or candidate_name.lower() in selected_names:
+            continue
+        if candidate_id and candidate_id in selected_ids:
+            continue
+        if not any(term in candidate_text for term in terms):
+            continue
+        key = candidate_id or candidate_name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        suggestions.append(candidate)
+        if len(suggestions) == 3:
+            break
+    return suggestions
+
 def handle_product_request(message=""):
     """Fetch catalogue products and apply category, budget, range and price ranking."""
     if not PRODUCT_SERVICE_URL:
@@ -217,7 +290,7 @@ def handle_product_request(message=""):
         if not products:
             return "No products available right now."
 
-        normalized_message = (message or "").lower()
+        all_products = products\n\n        normalized_message = (message or "").lower()
         catalog_categories = list(dict.fromkeys(
             product.get("category")
             for product in products
@@ -335,6 +408,18 @@ def handle_product_request(message=""):
             category = product.get("category")
             category_label = f" | Category: {category}" if category else ""
             result += f"- {name} | Price: {price}{category_label}\n"
+
+        # Keep add-ons out of the main results. The storefront chat UI renders
+        # this marked section as a collapsed, customer-controlled disclosure.
+        related = _related_products(products[:10], catalogue=all_products)
+        if related:
+            result += "\\n__RELATED_PRODUCTS__\\nYou may also need (optional):\\n"
+            for product in related:
+                name = product.get("name", "Unknown")
+                price = _format_product_price(product.get("price"))
+                category = product.get("category")
+                category_label = f" | Category: {category}" if category else ""
+                result += f"- {name} | Price: {price}{category_label}\\n"
         return result.rstrip()
 
     except requests.Timeout:

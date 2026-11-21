@@ -114,6 +114,14 @@ class ProductFilteringTests(unittest.TestCase):
         bounds = tool_router._extract_price_bounds("phones between 20k and 50k")
         self.assertEqual((bounds["lower"], bounds["upper"]), (20000, 50000))
 
+    def test_maximum_budget_and_rupee_prefixed_ranges_are_parsed(self):
+        maximum = tool_router._extract_price_bounds("smartphones maximum budget of ₹30,000")
+        self.assertEqual(maximum["upper"], 30000)
+        self.assertTrue(maximum["upper_inclusive"])
+
+        range_bounds = tool_router._extract_price_bounds("₹20k-₹50k")
+        self.assertEqual((range_bounds["lower"], range_bounds["upper"]), (20000, 50000))
+
     def test_short_budget_suffix_is_parsed(self):
         self.assertEqual(tool_router._extract_price_limit("under 20k"), 20000)
         self.assertEqual(tool_router._extract_price_limit("below ₹1 lakh"), 100000)

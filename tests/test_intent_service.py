@@ -74,11 +74,10 @@ class IntentServiceTests(unittest.TestCase):
     @patch("app.services.public_information_service._get_json")
     def test_capital_question_uses_rest_countries_primary_provider(self, mock_get_json):
         mock_get_json.return_value = [
-            {"name": {"common": "Japan", "official": "Japan"},
-             "capital": ["Tokyo"]}
+            {"name": {"common": "Canada", "official": "Canada"}, "capital": ["Ottawa"]}
         ]
-        response = get_general_knowledge("What is the capital of Japan?")
-        self.assertIn("The capital of Japan is Tokyo.", response)
+        response = get_general_knowledge("What is the capital of Canada?")
+        self.assertIn("The capital of Canada is Ottawa.", response)
         self.assertIn("https://restcountries.com/", response)
         self.assertEqual(mock_get_json.call_count, 1)
 
@@ -90,7 +89,7 @@ class IntentServiceTests(unittest.TestCase):
         ]
         response = get_general_knowledge("What is the capital of India?")
         self.assertIn("The capital of India is New Delhi.", response)
-        self.assertEqual(mock_get_json.call_count, 1)
+        mock_get_json.assert_not_called()
 
     @patch("app.services.public_information_service._get_json")
     def test_capital_lookup_falls_back_to_wikidata(self, mock_get_json):
@@ -98,12 +97,12 @@ class IntentServiceTests(unittest.TestCase):
             requests.ConnectionError("primary provider unavailable"),
             {
                 "search": [
-                    {"id": "Q17", "label": "Japan", "description": "country in East Asia"}
+                    {"id": "Q16", "label": "Canada", "description": "country in North America"}
                 ]
             },
             {
                 "entities": {
-                    "Q17": {
+                    "Q16": {
                         "claims": {
                             "P36": [
                                 {"mainsnak": {"datavalue": {"value": {"id": "Q1490"}}}}
@@ -112,10 +111,10 @@ class IntentServiceTests(unittest.TestCase):
                     }
                 }
             },
-            {"entities": {"Q1490": {"labels": {"en": {"value": "Tokyo"}}}}},
+            {"entities": {"Q1490": {"labels": {"en": {"value": "Ottawa"}}}}},
         ]
-        response = get_general_knowledge("What is the capital of Japan?")
-        self.assertIn("The capital of Japan is Tokyo.", response)
+        response = get_general_knowledge("What is the capital of Canada?")
+        self.assertIn("The capital of Canada is Ottawa.", response)
 
     @patch("app.services.public_information_service._get_json")
     def test_common_country_capitals_are_deterministic_without_external_requests(self, mock_get_json):

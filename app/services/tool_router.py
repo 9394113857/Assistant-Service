@@ -93,8 +93,8 @@ def handle_product_request(message=""):
 
         normalized_message = (message or "").lower()
         category_terms = re.findall(
-            r"\\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
-            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\\b",
+            r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
+            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b",
             normalized_message,
         )
         if category_terms:
@@ -107,7 +107,7 @@ def handle_product_request(message=""):
             products = filtered_products
 
         if re.search(
-            r"\\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\\b",
+            r"\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\b",
             normalized_message,
         ):
             products = sorted(
@@ -118,13 +118,13 @@ def handle_product_request(message=""):
                 ),
             )
 
-        result = "Here are the matching products:\\n"
+        result = "Here are the matching products:\n"
         for product in products[:5]:
             name = product.get("name", "Unknown")
             price = _format_product_price(product.get("price"))
             category = product.get("category")
             category_label = f" | Category: {category}" if category else ""
-            result += f"- {name} | Price: {price}{category_label}\\n"
+            result += f"- {name} | Price: {price}{category_label}\n"
 
         return result.rstrip()
 
@@ -166,14 +166,14 @@ def handle_order_request(user_id: int):
         if not orders:
             return "You have no orders."
 
-        result = "Your recent orders:\\n"
+        result = "Your recent orders:\n"
 
         for o in orders[:5]:
 
             order_id = o.get("order_id") or o.get("id")
             status = o.get("status", "unknown")
 
-            result += f"- Order #{order_id} | Status: {status}\\n"
+            result += f"- Order #{order_id} | Status: {status}\n"
 
         return result
 
@@ -208,13 +208,13 @@ def handle_recommendation_request(user_id: int):
         if not recos:
             return "No recommendations available yet."
 
-        result = "Recommended for you:\\n"
+        result = "Recommended for you:\n"
 
         for r in recos[:5]:
 
             product_id = r.get("product_id")
 
-            result += f"- Product ID: {product_id}\\n"
+            result += f"- Product ID: {product_id}\n"
 
         return result
 

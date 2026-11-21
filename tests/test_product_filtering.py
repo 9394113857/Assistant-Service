@@ -69,6 +69,51 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertLess(response.index("Item-21"), response.index("Laptop"))
         self.assertLess(response.index("Laptop"), response.index("Gaming Laptop Pro"))
 
+    def test_costliest_product_sorts_highest_price_first(self):
+        response = tool_router.handle_product_request("What is your costliest product?")
+        self.assertLess(response.index("Gaming Laptop Pro"), response.index("Laptop"))
+        self.assertLess(response.index("Laptop"), response.index("Item-21"))
+
+    def test_most_expensive_smartphone_respects_category(self):
+        response = tool_router.handle_product_request("What is the most expensive smartphone?")
+        self.assertIn("Item-21", response)
+        self.assertIn("Budget Phone", response)
+        self.assertNotIn("Laptop", response)
+        self.assertLess(response.index("Item-21"), response.index("Budget Phone"))
+
+    def test_smartphones_under_budget_filter_category_and_price(self):
+        response = tool_router.handle_product_request("Show smart phones under ₹22,000")
+        self.assertIn("Item-21", response)
+        self.assertIn("Budget Phone", response)
+        self.assertNotIn("Laptop", response)
+        self.assertNotIn("Gaming Laptop Pro", response)
+
+    def test_category_budget_with_no_matching_products_returns_clear_message(self):
+        response = tool_router.handle_product_request("Show smartphones under ₹10,000")
+        self.assertIn("No products were found", response)
+        self.assertNotIn("Laptop", response)
+
+    def test_between_price_range_is_inclusive_and_category_aware(self):
+        response = tool_router.handle_product_request("Show smartphones between ₹15,000 and ₹22,000")
+        self.assertIn("Budget Phone", response)
+        self.assertIn("Item-21", response)
+        self.assertNotIn("Laptop", response)
+
+    def test_above_price_filter(self):
+        response = tool_router.handle_product_request("Show laptops above ₹60,000")
+        self.assertIn("Gaming Laptop Pro", response)
+        self.assertNotIn("\n- Laptop |", response)
+
+    def test_price_bounds_support_common_customer_formats(self):
+        self.assertEqual(
+            tool_router._extract_price_bounds("phones under 25k")["upper"], 25000
+        )
+        self.assertEqual(
+            tool_router._extract_price_bounds("phones above 1 lakh")["lower"], 100000
+        )
+        bounds = tool_router._extract_price_bounds("phones between 20k and 50k")
+        self.assertEqual((bounds["lower"], bounds["upper"]), (20000, 50000))
+
     def test_short_budget_suffix_is_parsed(self):
         self.assertEqual(tool_router._extract_price_limit("under 20k"), 20000)
         self.assertEqual(tool_router._extract_price_limit("below ₹1 lakh"), 100000)

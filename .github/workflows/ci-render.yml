@@ -13,7 +13,7 @@
 #   - Install Python dependencies
 #   - Verify required project files
 #   - Validate Python syntax
-#   - Unit tests intentionally excluded for now
+#   - Run automated unit tests after syntax validation
 #
 # JOB 2: DOCKER RELEASE
 #   - Runs only for version tags (v*)
@@ -113,7 +113,7 @@ jobs:
       # Parse all repository Python files without importing or
       # executing application code. Virtual environments, Git
       # metadata, and Python cache directories are excluded.
-      # Unit tests are intentionally not run at this stage.
+      # Run the regression suite after syntax validation.
       # --------------------------------------------------------
       - name: 🔍 Validate Python Syntax
         run: |
@@ -156,8 +156,16 @@ jobs:
           PY
 
       # --------------------------------------------------------
+      # STEP 6: RUN AUTOMATED UNIT TESTS
+      # --------------------------------------------------------
+      - name: 🧪 Run Unit Tests
+        run: |
+          python -m unittest discover -s tests -v
+          echo "✅ Unit tests passed"
+
+      # --------------------------------------------------------
       # CI validation notification: dependencies, required files,
-      # and Python syntax only. Unit tests remain excluded.
+      # Python syntax, and automated unit tests.
       - name: 📧 CI Validation Success Email
         if: success()
         uses: dawidd6/action-send-mail@v3
@@ -178,8 +186,7 @@ jobs:
             Ref: ${{ github.ref }}
             Actor: ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Checks: dependency installation, required files, Python syntax.
-            Unit tests are currently excluded from this workflow.
+            Checks: dependency installation, required files, Python syntax, and unit tests.
             This is not a Docker release or deployment confirmation.
 
       - name: 📧 CI Validation Failure Email
@@ -219,7 +226,7 @@ jobs:
           echo "Dependencies: SUCCESS"
           echo "Required Files: SUCCESS"
           echo "Python Syntax: SUCCESS"
-          echo "Unit Tests: EXCLUDED"
+          echo "Unit Tests: SUCCESS"
           echo "CI Status: SUCCESS"
           echo "======================================"
 

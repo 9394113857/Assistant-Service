@@ -239,7 +239,7 @@ def _major_product_family(product):
     text = " ".join(str(product.get(field, "") or "") for field in ("name", "category", "description")).lower()
     patterns = (
         ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?|phones?|mobiles?)\b"),
-        ("laptop", r"\b(laptop|notebook computer)\\b"),
+        ("laptop", r"\b(laptop|notebook computer)\b"),
         ("tv", r"\b(tv|television|smart tv)\\b"),
         ("monitor", r"\b(monitor|display)\\b"),
         ("printer", r"\b(printer)\\b"),

@@ -23,7 +23,7 @@ INTENT_HANDLER_MAP = {
     "assistant_identity": GreetingHandler,
     "assistant_about": GreetingHandler,
 
-    # Reference WhatsApp-bot information capabilities, exposed via web chat
+    # Public information capabilities
     "weather": InformationHandler,
     "wikipedia": InformationHandler,
     "movie": InformationHandler,
@@ -35,6 +35,7 @@ INTENT_HANDLER_MAP = {
     "random_fact": InformationHandler,
     "quote": InformationHandler,
     "covid_stats": InformationHandler,
+    "general_knowledge": InformationHandler,
 
     "unknown": UnknownHandler,
 }

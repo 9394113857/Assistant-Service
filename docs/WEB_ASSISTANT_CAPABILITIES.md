@@ -18,7 +18,7 @@ The existing response contract remains:
   "response": "Weather details...",
   "intent": "weather",
   "confidence": 0.94,
-  "model_version": "rule_v2"
+  "model_version": "rule_v3"
 }
 ```
 
@@ -39,6 +39,7 @@ The existing response contract remains:
 | Movie | `Movie Interstellar` | `OMDB_API_KEY` |
 | Weather | `Weather in Hyderabad` | `OPENWEATHERMAP_API_KEY` |
 | Wikipedia | `Wiki Python programming language` | None |
+| General knowledge | `What is the capital of Japan?` | Wikipedia public API (no key) |
 | Quote | `Give me a quote` | None |
 
 Natural-language and command-style requests are both supported where a search term is required.
@@ -66,8 +67,9 @@ The GitHub Actions workflow now executes this test command after dependency inst
 ## Important limitations
 
 - Public providers may impose rate limits, change response formats, or become unavailable.
-- CI unit tests validate intent classification and query extraction; they do not call live providers.
+- CI unit tests validate intent classification, follow-up resolution, product price filtering/sorting, and query extraction. Live Wikipedia/provider requests are not made by the unit tests.
 - Configure API keys before expecting news, weather, or movie lookups to return live results.
 - COVID statistics remain disabled until a reliable provider is configured.
-- Product-category and cheaper-product intents currently route to the existing product handler; actual category/price filtering is a separate enhancement.
+- Public product-category searches do not require login. Explicit numeric budgets filter out products above the requested limit; cheapest/affordable requests sort by ascending price.
+- Personalized recommendations and account-specific order actions remain login-protected.
 - Order tracking currently routes to the existing order handler; specific order-id tracking is a separate enhancement.

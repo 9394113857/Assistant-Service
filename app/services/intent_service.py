@@ -83,7 +83,9 @@ def detect_intent(message: str):
 
     category_pattern = (
         r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
-        r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b"
+        r"earbuds?|headphones?|tablets?|watches?|electronics|accessories|"
+        r"tvs?|televisions?|monitors?|printers?|cameras?|projectors?|"
+        r"gaming consoles?|playstation|xbox)\b"
     )
     if re.search(category_pattern, msg):
         # Generic product advice/search is public. Only personalized requests

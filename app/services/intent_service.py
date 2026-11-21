@@ -59,10 +59,23 @@ def detect_intent(message: str):
     if re.search(r"\b(order|orders)\b", msg):
         return "show_orders", 0.92, "rule_v3"
 
-    # Price intent precedes generic recommendations so budget requests remain public.
+    # Product price ranking: detect highest-price requests before budget/category rules.
     if re.search(
-        r"\b(cheapest|cheap|cheaper|lowest price|low price|least expensive|"
-        r"affordable|budget|under|below|less than|within|up to)\b",
+        r"\\b(costliest|most expensive|highest[- ]priced|highest price|priciest|dearest)\\b",
+        msg,
+    ):
+        return "costliest_product", 0.94, "rule_v3"
+
+    if re.search(
+        r"\\b(cheapest|cheaper|lowest[- ]priced|lowest price|least expensive)\\b",
+        msg,
+    ):
+        return "cheaper_product", 0.94, "rule_v3"
+
+    # Budget and price-range requests stay public product searches.
+    if re.search(
+        r"\\b(cheap|affordable|budget|under|below|less than|within|up to|"
+        r"between|from|above|over|more than|greater than|at least|minimum price)\\b",
         msg,
     ):
         return "cheaper_product", 0.92, "rule_v3"

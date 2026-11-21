@@ -23,7 +23,7 @@ def process_user_message(user_id, message):
             "response": "Please enter a message.",
             "intent": "unknown",
             "confidence": 0.0,
-            "model_version": "rule_v2",
+            "model_version": "rule_v3",
         }
 
     # Session management

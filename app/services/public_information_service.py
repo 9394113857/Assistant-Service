@@ -35,7 +35,7 @@ def get_general_knowledge(message):
     """Answer factual questions; resolve country capitals through Wikidata."""
     question = (message or "").strip()
     capital_match = re.search(
-        r"\\bcapital of\\s+(.+?)[?.!]*$",
+        r"\bcapital of\s+(.+?)[?.!]*$",
         question,
         flags=re.IGNORECASE,
     )
@@ -115,10 +115,10 @@ def get_general_knowledge(message):
                 return f"I found the capital entity for {country}, but couldn't retrieve its English name."
 
             page_url = f"https://en.wikipedia.org/wiki/{quote(capital_label.replace(' ', '_'))}"
-            return f"The capital of {country} is {capital_label}.\\n\\nSource: {page_url}"
+            return f"The capital of {country} is {capital_label}.\n\nSource: {page_url}"
 
         search_term = re.sub(
-            r"^(please\\s+)?(can you\\s+)?(tell me\\s+)?(what is|what are|who is|where is|when was|how does|why does)\\s+",
+            r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is|what are|who is|where is|when was|how does|why does)\s+",
             "",
             question,
             flags=re.IGNORECASE,
@@ -155,7 +155,7 @@ def get_general_knowledge(message):
         if not extract:
             return f"I found '{title}', but couldn't retrieve a summary."
         answer = f"{title}: {extract[:1200]}"
-        return f"{answer}\\n\\nSource: {page_url}" if page_url else answer
+        return f"{answer}\n\nSource: {page_url}" if page_url else answer
 
     except (requests.RequestException, ValueError, TypeError, KeyError):
         return "General information lookup is temporarily unavailable. Please try again."

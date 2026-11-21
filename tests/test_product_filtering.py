@@ -22,6 +22,7 @@ class ProductFilteringTests(unittest.TestCase):
             {"id": 2, "name": "Laptop", "price": 55000, "category": "Electronics"},
             {"id": 3, "name": "Item-21", "price": 21000, "category": "Smart Phones"},
             {"id": 4, "name": "Budget Phone", "price": 15000, "category": "Smart Phones"},
+            {"id": 5, "name": "Exactly Twenty Thousand", "price": 20000, "category": "Electronics"},
         ]
         self.url_patch = patch.object(tool_router, "PRODUCT_SERVICE_URL", "https://products.test/list")
         self.url_patch.start()
@@ -41,6 +42,13 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertNotIn("Item-21", response)
         self.assertNotIn("Laptop", response)
         self.assertNotIn("Gaming Laptop Pro", response)
+        self.assertNotIn("Exactly Twenty Thousand", response)
+
+    def test_category_search_matches_smartphones_without_login_routing(self):
+        response = tool_router.handle_product_request("Do you have any smartphones?")
+        self.assertIn("Budget Phone", response)
+        self.assertIn("Item-21", response)
+        self.assertNotIn("Laptop", response)
 
     def test_cheapest_product_sorts_lowest_price_first(self):
         response = tool_router.handle_product_request("What is your cheapest product?")

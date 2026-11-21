@@ -467,11 +467,10 @@ Never commit real API keys. An example variable file is available at `.env.examp
 
 ## Validation record
 
-- GitHub Actions CI run #15 passed.
-- Python syntax validation passed for 30 Python files.
-- Six unit tests passed.
-- Live external API calls and Render integration have not yet been verified.
-- Changes remain on `feature/web-assistant-reference-capabilities`; they have not been merged into `main`.
+- The public-information reference capabilities and November 21 product-chat regression fixes are committed to `main`.
+- GitHub Actions CI now runs `python -m unittest discover -s tests -v` after dependency installation and Python syntax validation.
+- The latest workflow result must be checked in GitHub Actions; workflow configuration is not evidence that the tests passed.
+- Live external API calls and Render integration still require verification.
 
 ## Remaining work
 

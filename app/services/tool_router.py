@@ -219,14 +219,14 @@ _RELATED_PRODUCT_TERMS = {
 def _major_product_family(product):
     text = " ".join(str(product.get(field, "") or "") for field in ("name", "category", "description")).lower()
     patterns = (
-        ("smartphone", r"\\b(smart ?phone|mobile phone|cell ?phone)\\b"),
-        ("laptop", r"\\b(laptop|notebook computer)\\b"),
-        ("tv", r"\\b(tv|television|smart tv)\\b"),
-        ("monitor", r"\\b(monitor|display)\\b"),
-        ("printer", r"\\b(printer)\\b"),
-        ("camera", r"\\b(camera|dslr|mirrorless)\\b"),
-        ("gaming console", r"\\b(playstation|xbox|nintendo switch|gaming console)\\b"),
-        ("projector", r"\\b(projector)\\b"),
+        ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?)\\b"),
+        ("laptop", r"\b(laptop|notebook computer)\\b"),
+        ("tv", r"\b(tv|television|smart tv)\\b"),
+        ("monitor", r"\b(monitor|display)\\b"),
+        ("printer", r"\b(printer)\\b"),
+        ("camera", r"\b(camera|dslr|mirrorless)\\b"),
+        ("gaming console", r"\b(playstation|xbox|nintendo switch|gaming console)\\b"),
+        ("projector", r"\b(projector)\\b"),
     )
     for family, pattern in patterns:
         if re.search(pattern, text):

@@ -171,14 +171,14 @@ def _extract_price_bounds(message):
             "lower_inclusive": False,
             "upper_inclusive": True,
         }
-    if operator in {"at least", "minimum", "min"}:
+    if operator.startswith("at least") or operator.startswith("minimum") or operator.startswith("min"):
         return {
             "lower": value,
             "upper": None,
             "lower_inclusive": True,
             "upper_inclusive": True,
         }
-    if operator in {"up to", "within", "maximum", "max"}:
+    if operator in {"up to", "within"} or operator.startswith("maximum") or operator.startswith("max") or operator.startswith("budget"):
         return {
             "lower": None,
             "upper": value,

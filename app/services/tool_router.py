@@ -34,30 +34,14 @@ def _format_product_price(value):
     return f"₹{formatted_amount}"
 
 
-def _matches_product_query(product, message):
-    """Match a requested product category without fuzzy cross-category matches."""
-    category_aliases = {
-        "smartphones": {"smartphone", "phone", "mobile", "cellphone"},
-        "smartphone": {"smartphone", "phone", "mobile", "cellphone"},
-        "phones": {"phone", "mobile", "smartphone", "cellphone"},
-        "mobiles": {"mobile", "phone", "smartphone", "cellphone"},
-        "laptops": {"laptop", "computer", "notebook"},
-        "laptop": {"laptop", "computer", "notebook"},
-        "computers": {"computer", "laptop", "notebook"},
-        "headphones": {"headphone", "headset", "earphone", "earbud"},
-        "headphone": {"headphone", "headset", "earphone", "earbud"},
-        "earbuds": {"earbud", "earphone", "headphone"},
-        "tablets": {"tablet", "ipad"},
-        "watches": {"watch", "smartwatch"},
-        "electronics": {"electronics"},
-        "accessories": {"accessory", "accessories"},
-    }
+def _normalize_category(value):
+    return " ".join(re.findall(r"[a-z0-9]+", str(value or "").lower()))
 
-    requested = re.findall(
-        r"\b(smartphones?|phones?|mobiles?|laptops?|computers?|"
-        r"headphones?|earbuds?|tablets?|watches?|electronics|accessories)\b",
-        (message or "").lower(),
-    )
+
+def _matches_product_query(product, message, catalog_categories=None):
+    """Match requested categories using catalogue labels and safe aliases."""
+    text = (message or "").lower()
+    category = _normalize_category(product.get("category"))
     product_text = " ".join(
         str(product.get(field, "") or "")
         for field in ("name", "category")
@@ -66,55 +50,159 @@ def _matches_product_query(product, message):
         word.rstrip("s") for word in re.findall(r"[a-z0-9]+", product_text)
     }
 
-    if requested:
-        for term in requested:
-            normalized = term.rstrip("s")
-            aliases = category_aliases.get(term, {normalized})
-            if product_words.intersection(aliases):
-                return True
-        return False
+    # Prefer exact category labels that actually exist in the current catalogue.
+    requested_catalog_categories = set()
+    for label in catalog_categories or []:
+        normalized = _normalize_category(label)
+        if normalized and re.search(
+            r"\b" + re.escape(normalized).replace(r"\ ", r"\s+") + r"\b",
+            text,
+        ):
+            requested_catalog_categories.add(normalized)
 
-    # For non-category searches, retain conservative name/category word matching.
+    if requested_catalog_categories:
+        return category in requested_catalog_categories
+
+    alias_patterns = {
+        r"\bsmart[\s-]*phones?\b": {"smart", "smartphone", "phone", "mobile", "cellphone"},
+        r"\bmobile[\s-]*phones?\b": {"mobile", "phone", "smartphone", "cellphone"},
+        r"\bphones?\b": {"phone", "mobile", "smartphone", "cellphone"},
+        r"\bmobiles?\b": {"mobile", "phone", "smartphone", "cellphone"},
+        r"\blaptops?\b": {"laptop", "computer", "notebook"},
+        r"\bcomputers?\b": {"computer", "laptop", "notebook"},
+        r"\bheadphones?\b": {"headphone", "headset", "earphone", "earbud"},
+        r"\bearbuds?\b": {"earbud", "earphone", "headphone"},
+        r"\btablets?\b": {"tablet", "ipad"},
+        r"\bsmart[\s-]*watches?\b": {"smartwatch", "watch"},
+        r"\bwatches?\b": {"watch", "smartwatch"},
+        r"\belectronics\b": {"electronics"},
+        r"\baccessories\b": {"accessory", "accessories"},
+    }
+
+    requested_aliases = set()
+    for pattern, aliases in alias_patterns.items():
+        if re.search(pattern, text):
+            requested_aliases.update(aliases)
+
+    if requested_aliases:
+        return bool(product_words.intersection(requested_aliases))
+
+    # Conservative fallback for a product name explicitly mentioned by the user.
     ignored_words = {
         "show", "list", "find", "get", "display", "all", "available",
         "some", "me", "the", "for", "with", "please", "i", "want",
         "looking", "search", "products", "product", "items", "category",
         "under", "below", "within", "budget", "cheap", "cheapest", "cheaper",
-        "affordable", "lowest", "price", "low", "less", "than", "up", "to",
-        "recommend", "recommendation", "suggest", "do", "you", "have", "any",
-        "is", "your", "what", "are", "a", "an", "programming",
-        "office", "work", "daily", "usage",
+        "costliest", "expensive", "priciest", "affordable", "lowest", "highest",
+        "price", "low", "less", "than", "up", "to", "over", "above", "between",
+        "from", "and", "maximum", "minimum", "recommend", "recommendation",
+        "suggest", "do", "you", "have", "any", "is", "your", "what", "are",
+        "a", "an", "programming", "office", "work", "daily", "usage",
     }
     query_words = {
         word.rstrip("s")
-        for word in re.findall(r"[a-z0-9]+", (message or "").lower())
+        for word in re.findall(r"[a-z0-9]+", text)
         if len(word) > 2 and word not in ignored_words
     }
     if not query_words:
         return True
     return bool(query_words.intersection(product_words))
 
-def _extract_price_limit(message):
-    """Extract an explicit rupee budget, supporting 20,000, 20k and 1 lakh."""
-    text = (message or "").lower().replace(",", "")
-    pattern = (
-        r"\b(?:under|below|less than|within|up to|maximum(?: budget)?(?: of)?)"
-        r"\s*(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh|lac|l)?\b"
-    )
-    match = re.search(pattern, text)
-    if not match:
-        return None
-    amount = float(match.group(1))
-    unit = (match.group(2) or "").lower()
-    if unit == "k" or unit == "thousand":
+
+def _parse_price_amount(value, unit=""):
+    amount = float(str(value).replace(",", ""))
+    unit = (unit or "").lower()
+    if unit in {"k", "thousand"}:
         amount *= 1000
     elif unit in {"lakh", "lac", "l"}:
         amount *= 100000
     return amount
 
 
+def _extract_price_bounds(message):
+    """Extract a lower/upper price range from common customer phrasing."""
+    text = (message or "").lower()
+
+    amount = r"(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lac|l)?"
+
+    between_match = re.search(
+        r"\bbetween\s+" + amount + r"\s+(?:and|to|-)\s+" + amount + r"\b",
+        text,
+    )
+    if between_match:
+        lower = _parse_price_amount(between_match.group(1), between_match.group(2))
+        upper = _parse_price_amount(between_match.group(3), between_match.group(4))
+        return {
+            "lower": min(lower, upper),
+            "upper": max(lower, upper),
+            "lower_inclusive": True,
+            "upper_inclusive": True,
+        }
+
+    # Also accept shorthand ranges such as "₹20k-₹50k".
+    shorthand_match = re.search(
+        r"\b" + amount + r"\s*(?:-|to)\s*" + amount + r"\b",
+        text,
+    )
+    if shorthand_match:
+        lower = _parse_price_amount(shorthand_match.group(1), shorthand_match.group(2))
+        upper = _parse_price_amount(shorthand_match.group(3), shorthand_match.group(4))
+        return {
+            "lower": min(lower, upper),
+            "upper": max(lower, upper),
+            "lower_inclusive": True,
+            "upper_inclusive": True,
+        }
+
+    bound_match = re.search(
+        r"\b(under|below|less than|up to|within|maximum|max|"
+        r"above|over|more than|greater than|at least|minimum|min)\b\s*" + amount,
+        text,
+    )
+    if not bound_match:
+        return None
+
+    operator = bound_match.group(1)
+    value = _parse_price_amount(bound_match.group(2), bound_match.group(3))
+    if operator in {"above", "over", "more than", "greater than"}:
+        return {
+            "lower": value,
+            "upper": None,
+            "lower_inclusive": False,
+            "upper_inclusive": True,
+        }
+    if operator in {"at least", "minimum", "min"}:
+        return {
+            "lower": value,
+            "upper": None,
+            "lower_inclusive": True,
+            "upper_inclusive": True,
+        }
+    if operator in {"up to", "within", "maximum", "max"}:
+        return {
+            "lower": None,
+            "upper": value,
+            "lower_inclusive": True,
+            "upper_inclusive": True,
+        }
+    return {
+        "lower": None,
+        "upper": value,
+        "lower_inclusive": True,
+        "upper_inclusive": False,
+    }
+
+
+def _extract_price_limit(message):
+    """Backward-compatible helper returning the requested single price bound."""
+    bounds = _extract_price_bounds(message)
+    if not bounds:
+        return None
+    return bounds["upper"] if bounds["upper"] is not None else bounds["lower"]
+
+
 def handle_product_request(message=""):
-    """Fetch products and apply category and explicit budget filtering locally."""
+    """Fetch catalogue products and apply category, budget, range and price ranking."""
     if not PRODUCT_SERVICE_URL:
         return "Product service is not configured. Please check PRODUCT_SERVICE_URL."
 
@@ -129,48 +217,105 @@ def handle_product_request(message=""):
             return "No products available right now."
 
         normalized_message = (message or "").lower()
-        category_terms = re.findall(
-            r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
-            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b",
-            normalized_message,
+        catalog_categories = list(dict.fromkeys(
+            product.get("category")
+            for product in products
+            if isinstance(product, dict) and product.get("category")
+        ))
+
+        # Apply a category filter only when the customer actually names one.
+        category_patterns = (
+            r"\bsmart[\s-]*phones?\b", r"\bmobile[\s-]*phones?\b",
+            r"\bphones?\b", r"\bmobiles?\b", r"\blaptops?\b",
+            r"\bcomputers?\b", r"\bheadphones?\b", r"\bearbuds?\b",
+            r"\btablets?\b", r"\bsmart[\s-]*watches?\b", r"\bwatches?\b",
+            r"\belectronics\b", r"\baccessories\b",
         )
-        if category_terms:
+        has_known_category = any(
+            re.search(pattern, normalized_message) for pattern in category_patterns
+        )
+        has_catalog_category = any(
+            re.search(
+                r"\b" + re.escape(_normalize_category(category)).replace(r"\ ", r"\s+") + r"\b",
+                normalized_message,
+            )
+            for category in catalog_categories
+            if _normalize_category(category)
+        )
+        if has_known_category or has_catalog_category:
             products = [
                 product for product in products
-                if _matches_product_query(product, normalized_message)
+                if _matches_product_query(product, normalized_message, catalog_categories)
             ]
             if not products:
-                return "I couldn't find products matching that category."
+                return "I couldn't find products matching that category in the current catalogue."
 
-        price_limit = _extract_price_limit(normalized_message)
-        if price_limit is not None:
-            inclusive_limit = bool(re.search(
-                r"\b(up to|within|maximum(?: budget)?(?: of)?)\b",
-                normalized_message,
-            ))
+        price_bounds = _extract_price_bounds(normalized_message)
+        if price_bounds:
+            lower = price_bounds["lower"]
+            upper = price_bounds["upper"]
             products = [
                 product for product in products
                 if _product_price(product) is not None
                 and (
-                    _product_price(product) <= price_limit
-                    if inclusive_limit
-                    else _product_price(product) < price_limit
+                    lower is None
+                    or (
+                        _product_price(product) >= lower
+                        if price_bounds["lower_inclusive"]
+                        else _product_price(product) > lower
+                    )
+                )
+                and (
+                    upper is None
+                    or (
+                        _product_price(product) <= upper
+                        if price_bounds["upper_inclusive"]
+                        else _product_price(product) < upper
+                    )
                 )
             ]
             if not products:
-                limit_label = "at or below" if inclusive_limit else "below"
+                if lower is not None and upper is not None:
+                    range_label = (
+                        f"between {_format_product_price(lower)} and "
+                        f"{_format_product_price(upper)}"
+                    )
+                elif upper is not None:
+                    range_label = (
+                        f"at or below {_format_product_price(upper)}"
+                        if price_bounds["upper_inclusive"]
+                        else f"below {_format_product_price(upper)}"
+                    )
+                else:
+                    range_label = (
+                        f"at or above {_format_product_price(lower)}"
+                        if price_bounds["lower_inclusive"]
+                        else f"above {_format_product_price(lower)}"
+                    )
                 return (
-                    f"No products were found {limit_label} "
-                    f"{_format_product_price(price_limit)}. "
-                    "Try increasing your budget or browsing all products."
+                    f"No products were found {range_label} in the selected category. "
+                    "Try a different budget or category."
                 )
 
-        sort_by_price = re.search(
-            r"\b(cheapest|cheap|cheaper|lowest price|low price|least expensive|"
-            r"affordable|budget|under|below|less than|within|up to)\b",
+        costliest = re.search(
+            r"\b(costliest|most expensive|highest[- ]priced|highest price|priciest|dearest)\b",
             normalized_message,
         )
-        if sort_by_price:
+        cheapest = re.search(
+            r"\b(cheapest|cheaper|lowest[- ]priced|lowest price|least expensive)\b",
+            normalized_message,
+        )
+
+        if costliest:
+            products = sorted(
+                products,
+                key=lambda product: (
+                    _product_price(product) is None,
+                    -_product_price(product) if _product_price(product) is not None else 0,
+                ),
+            )
+            heading = "Here are the highest-priced matching products:"
+        elif cheapest or price_bounds:
             products = sorted(
                 products,
                 key=lambda product: (
@@ -178,9 +323,12 @@ def handle_product_request(message=""):
                     _product_price(product) if _product_price(product) is not None else float("inf"),
                 ),
             )
+            heading = "Here are the matching products, sorted by lowest price:"
+        else:
+            heading = "Here are the matching products:"
 
-        result = "Here are the matching products:\n"
-        for product in products[:5]:
+        result = heading + "\n"
+        for product in products[:10]:
             name = product.get("name", "Unknown")
             price = _format_product_price(product.get("price"))
             category = product.get("category")

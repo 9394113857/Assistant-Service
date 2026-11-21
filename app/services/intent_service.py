@@ -75,7 +75,8 @@ def detect_intent(message: str):
     # Budget and price-range requests stay public product searches.
     if re.search(
         r"\b(cheap|affordable|budget|under|below|less than|within|up to|"
-        r"between|from|above|over|more than|greater than|at least|minimum price)\b",
+        r"between|from|above|over|more than|greater than|at least|minimum price|"
+        r"maximum|minimum|max|min)\b",
         msg,
     ):
         return "cheaper_product", 0.92, "rule_v3"

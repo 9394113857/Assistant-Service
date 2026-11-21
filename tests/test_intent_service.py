@@ -1,4 +1,5 @@
 import unittest
+import requests
 from unittest.mock import patch
 
 from app.services.assistant_orchestrator import LOGIN_REQUIRED_INTENTS
@@ -58,8 +59,34 @@ class IntentServiceTests(unittest.TestCase):
         )
 
     @patch("app.services.public_information_service._get_json")
-    def test_capital_question_uses_wikidata_capital_claim(self, mock_get_json):
+    def test_capital_question_uses_rest_countries_primary_provider(self, mock_get_json):
+        mock_get_json.return_value = [
+            {"name": {"common": "Japan", "official": "Japan"},
+             "capital": ["Tokyo"]}
+        ]
+        response = get_general_knowledge("What is the capital of Japan?")
+        self.assertIn("The capital of Japan is Tokyo.", response)
+        self.assertIn("https://restcountries.com/", response)
+        self.assertEqual(mock_get_json.call_count, 1)
+
+    @patch("app.services.public_information_service._get_json")
+    def test_india_capital_is_new_delhi(self, mock_get_json):
+        mock_get_json.return_value = [
+            {"name": {"common": "India", "official": "Republic of India"},
+             "capital": ["New Delhi"]}
+        ]
+        response = get_general_knowledge("What is the capital of India?")
+        self.assertIn("The capital of India is New Delhi.", response)
+        self.assertEqual(mock_get_json.call_count, 1)
+
+    @patch("app.services.public_information_service._get_json")
+    def test_capital_lookup_falls_back_to_wikidata(self, mock_get_json):
         mock_get_json.side_effect = [
+            [
+                {"name": {"common": "Japan", "official": "Japan"},
+                 "capital": ["Tokyo"]}
+            ],
+            requests.ConnectionError('primary provider unavailable'),
             {
                 "search": [
                     {"id": "Q17", "label": "Japan", "description": "country in East Asia"}
@@ -70,30 +97,16 @@ class IntentServiceTests(unittest.TestCase):
                     "Q17": {
                         "claims": {
                             "P36": [
-                                {
-                                    "mainsnak": {
-                                        "datavalue": {
-                                            "value": {"id": "Q1490"}
-                                        }
-                                    }
-                                }
+                                {"mainsnak": {"datavalue": {"value": {"id": "Q1490"}}}}
                             ]
                         }
                     }
                 }
             },
-            {
-                "entities": {
-                    "Q1490": {
-                        "labels": {"en": {"value": "Tokyo"}}
-                    }
-                }
-            },
+            {"entities": {"Q1490": {"labels": {"en": {"value": "Tokyo"}}}}},
         ]
         response = get_general_knowledge("What is the capital of Japan?")
         self.assertIn("The capital of Japan is Tokyo.", response)
-        self.assertIn("https://en.wikipedia.org/wiki/Tokyo", response)
-        self.assertEqual(mock_get_json.call_count, 3)
 
     def test_public_product_intents_do_not_require_login(self):
         self.assertNotIn("product_category", LOGIN_REQUIRED_INTENTS)

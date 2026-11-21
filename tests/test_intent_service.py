@@ -52,6 +52,19 @@ class IntentServiceTests(unittest.TestCase):
             with self.subTest(message=message):
                 self.assertEqual(detect_intent(message)[0], expected)
 
+    def test_product_price_ranking_and_budget_intents_are_recognized(self):
+        cases = {
+            "What is your costliest product?": "costliest_product",
+            "Show me the most expensive smartphone": "costliest_product",
+            "What is your cheapest product?": "cheaper_product",
+            "Show smartphones under ₹30,000": "cheaper_product",
+            "Show laptops between ₹40,000 and ₹80,000": "cheaper_product",
+            "Show phones above 20k": "cheaper_product",
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(detect_intent(message)[0], expected)
+
     def test_general_knowledge_questions_are_recognized(self):
         self.assertEqual(
             detect_intent("What is the capital of Japan?")[0],

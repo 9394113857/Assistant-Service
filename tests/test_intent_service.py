@@ -1,6 +1,7 @@
 import unittest
 
 from app.services.intent_service import detect_intent
+from app.services.followup_resolver import resolve_followup
 from app.services.public_information_service import _query_after_command
 
 
@@ -27,21 +28,31 @@ class IntentServiceTests(unittest.TestCase):
                 intent, confidence, version = detect_intent(message)
                 self.assertEqual(intent, expected)
                 self.assertGreaterEqual(confidence, 0.60)
-                self.assertEqual(version, "rule_v2")
+                self.assertEqual(version, "rule_v3")
 
-    def test_existing_ecommerce_intents_are_recognized(self):
+    def test_ecommerce_intents_keep_public_search_separate_from_private_actions(self):
         cases = {
             "show products": "show_products",
             "cheaper products": "cheaper_product",
+            "what is your cheapest product": "cheaper_product",
+            "find products below ₹20,000": "cheaper_product",
             "show laptops": "product_category",
-            "show phones": "product_category",
+            "do you have any smartphones": "product_category",
+            "show me headphones": "product_category",
+            "i am looking for an affordable laptop for programming": "cheaper_product",
             "show my orders": "show_orders",
             "track my order": "track_order",
-            "recommend a phone": "recommend_product",
+            "recommend products for me": "recommend_product",
         }
         for message, expected in cases.items():
             with self.subTest(message=message):
                 self.assertEqual(detect_intent(message)[0], expected)
+
+    def test_general_knowledge_questions_are_recognized(self):
+        self.assertEqual(
+            detect_intent("What is the capital of Japan?")[0],
+            "general_knowledge",
+        )
 
     def test_natural_language_greetings_and_about_are_recognized(self):
         self.assertEqual(detect_intent("hello bro")[0], "greeting")
@@ -57,12 +68,36 @@ class IntentServiceTests(unittest.TestCase):
             "resilience",
         )
 
+    def test_followup_does_not_match_one_inside_smartphones_or_headphones(self):
+        history = [
+            "user: Show me all products",
+            "assistant: Here are the products I found for you.",
+        ]
+        self.assertEqual(
+            resolve_followup("Do you have any smartphones?", history),
+            "Do you have any smartphones?",
+        )
+        self.assertEqual(
+            resolve_followup("Show me headphones", history),
+            "Show me headphones",
+        )
+
+    def test_followup_only_uses_user_messages_as_context(self):
+        history = [
+            "user: Show me all products",
+            "assistant: Here are the products I found for you.",
+        ]
+        self.assertEqual(
+            resolve_followup("Can you show another one?", history),
+            "recommend product",
+        )
+
     def test_hi_is_not_matched_inside_another_word(self):
         self.assertEqual(detect_intent("which laptop is best")[0], "product_category")
 
     def test_empty_and_unknown_messages(self):
         self.assertEqual(detect_intent("")[0], "unknown")
-        self.assertEqual(detect_intent("something unrelated")[0], "unknown")
+        self.assertEqual(detect_intent("ff")[0], "unknown")
 
 
 if __name__ == "__main__":

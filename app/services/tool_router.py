@@ -120,7 +120,7 @@ def handle_product_request(message=""):
         price_limit = _extract_price_limit(normalized_message)
         if price_limit is not None:
             inclusive_limit = bool(re.search(
-                r"\\b(up to|within|maximum(?: budget)?(?: of)?)\\b",
+                r"\b(up to|within|maximum(?: budget)?(?: of)?)\b",
                 normalized_message,
             ))
             products = [

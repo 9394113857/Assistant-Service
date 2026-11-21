@@ -1,4 +1,6 @@
 import os
+import re
+
 import requests
 from flask import request
 
@@ -7,37 +9,119 @@ ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL")
 CART_SERVICE_URL = os.getenv("CART_SERVICE_URL")
 RECO_SERVICE_URL = os.getenv("RECO_SERVICE_URL")
 
+PRODUCT_REQUEST_TIMEOUT = 10
+
+
+def _product_price(product):
+    """Return a numeric price for sorting, or None when the price is invalid."""
+    try:
+        value = product.get("price")
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = re.sub(r"[^0-9.]", "", value)
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _matches_product_query(product, message):
+    """Match meaningful query words against the product name/category."""
+    ignored_words = {
+        "show", "list", "find", "get", "display", "all", "available",
+        "some", "me", "the", "for", "with", "please", "i", "want",
+        "looking", "search", "products", "product", "items", "category",
+        "under", "below", "within", "budget", "cheap", "cheaper",
+        "affordable", "lowest", "price", "low",
+    }
+    query_words = {
+        word.rstrip("s")
+        for word in re.findall(r"[a-z0-9]+", (message or "").lower())
+        if len(word) > 2 and word not in ignored_words
+    }
+    if not query_words:
+        return True
+
+    product_text = " ".join(
+        str(product.get(field, "") or "")
+        for field in ("name", "category")
+    ).lower()
+    product_words = {
+        word.rstrip("s") for word in re.findall(r"[a-z0-9]+", product_text)
+    }
+    return any(
+        query_word in product_words
+        or any(query_word in product_word or product_word in query_word
+               for product_word in product_words)
+        for query_word in query_words
+    )
+
 
 # ==============================
 # PRODUCT REQUEST
 # ==============================
-def handle_product_request():
+def handle_product_request(message=""):
+    """Fetch products and apply category/price intent filtering locally."""
+    if not PRODUCT_SERVICE_URL:
+        return "Product service is not configured. Please check PRODUCT_SERVICE_URL."
 
     try:
-
-        response = requests.get(PRODUCT_SERVICE_URL)
-
-        if response.status_code != 200:
-            return "Sorry, product service is temporarily unavailable."
-
+        response = requests.get(
+            PRODUCT_SERVICE_URL,
+            timeout=PRODUCT_REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
         products = response.json()
 
+        if not isinstance(products, list):
+            return "Product service returned an unexpected response."
+
         if not products:
-            return "No products available."
+            return "No products available right now."
 
-        result = "Here are some products:\n"
+        normalized_message = (message or "").lower()
+        category_terms = re.findall(
+            r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
+            r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b",
+            normalized_message,
+        )
+        if category_terms:
+            filtered_products = [
+                product for product in products
+                if _matches_product_query(product, normalized_message)
+            ]
+            if not filtered_products:
+                return "I couldn't find products matching that category."
+            products = filtered_products
 
-        for p in products[:5]:
+        if re.search(
+            r"\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\b",
+            normalized_message,
+        ):
+            products = sorted(
+                products,
+                key=lambda product: (
+                    _product_price(product) is None,
+                    _product_price(product) if _product_price(product) is not None else float("inf"),
+                ),
+            )
 
-            name = p.get("name", "Unknown")
-            price = p.get("price", "N/A")
+        result = "Here are the matching products:\n"
+        for product in products[:5]:
+            name = product.get("name", "Unknown")
+            price = product.get("price", "N/A")
+            category = product.get("category")
+            category_label = f" | Category: {category}" if category else ""
+            result += f"- {name} | Price: {price}{category_label}\n"
 
-            result += f"- {name} (${price})\n"
+        return result.rstrip()
 
-        return result
-
-    except Exception:
-        return "Product service unavailable."
+    except requests.Timeout:
+        return "Product service took too long to respond. Please try again."
+    except requests.RequestException:
+        return "Product service is temporarily unavailable. Please try again later."
+    except (ValueError, TypeError):
+        return "Product service returned invalid product data."
 
 
 # ==============================

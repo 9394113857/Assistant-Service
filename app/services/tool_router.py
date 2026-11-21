@@ -38,11 +38,14 @@ def _matches_product_query(product, message):
     """Match a requested product category without fuzzy cross-category matches."""
     category_aliases = {
         "smartphones": {"smartphone", "phone", "mobile", "cellphone"},
+        "smartphone": {"smartphone", "phone", "mobile", "cellphone"},
         "phones": {"phone", "mobile", "smartphone", "cellphone"},
         "mobiles": {"mobile", "phone", "smartphone", "cellphone"},
         "laptops": {"laptop", "computer", "notebook"},
+        "laptop": {"laptop", "computer", "notebook"},
         "computers": {"computer", "laptop", "notebook"},
         "headphones": {"headphone", "headset", "earphone", "earbud"},
+        "headphone": {"headphone", "headset", "earphone", "earbud"},
         "earbuds": {"earbud", "earphone", "headphone"},
         "tablets": {"tablet", "ipad"},
         "watches": {"watch", "smartwatch"},
@@ -51,8 +54,8 @@ def _matches_product_query(product, message):
     }
 
     requested = re.findall(
-        r"\\b(smartphones?|phones?|mobiles?|laptops?|computers?|"
-        r"headphones?|earbuds?|tablets?|watches?|electronics|accessories)\\b",
+        r"\b(smartphones?|phones?|mobiles?|laptops?|computers?|"
+        r"headphones?|earbuds?|tablets?|watches?|electronics|accessories)\b",
         (message or "").lower(),
     )
     product_text = " ".join(

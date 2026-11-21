@@ -104,6 +104,22 @@ class IntentServiceTests(unittest.TestCase):
         response = get_general_knowledge("What is the capital of Japan?")
         self.assertIn("The capital of Japan is Tokyo.", response)
 
+    @patch("app.services.public_information_service._get_json")
+    def test_common_country_capitals_are_deterministic_without_external_requests(self, mock_get_json):
+        cases = {
+            "Japan": "Tokyo",
+            "India": "New Delhi",
+            "France": "Paris",
+            "Australia": "Canberra",
+            "Germany": "Berlin",
+            "the United States": "Washington, D.C.",
+        }
+        for country, capital in cases.items():
+            with self.subTest(country=country):
+                response = get_general_knowledge(f"What is the capital of {country}?")
+                self.assertIn(f"The capital of {country} is {capital}.", response)
+        mock_get_json.assert_not_called()
+
     def test_public_product_intents_do_not_require_login(self):
         self.assertNotIn("product_category", LOGIN_REQUIRED_INTENTS)
         self.assertNotIn("cheaper_product", LOGIN_REQUIRED_INTENTS)

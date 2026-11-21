@@ -19,6 +19,7 @@ KNOWN_COUNTRY_CAPITALS = {
     "australia": ("Canberra", "https://www.dfat.gov.au/"),
     "germany": ("Berlin", "https://www.bundesregierung.de/"),
     "united states": ("Washington, D.C.", "https://www.usa.gov/"),
+    "the united states": ("Washington, D.C.", "https://www.usa.gov/"),
     "united states of america": ("Washington, D.C.", "https://www.usa.gov/"),
     "usa": ("Washington, D.C.", "https://www.usa.gov/"),
     "us": ("Washington, D.C.", "https://www.usa.gov/"),

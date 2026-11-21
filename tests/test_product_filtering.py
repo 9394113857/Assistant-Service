@@ -26,6 +26,7 @@ class ProductFilteringTests(unittest.TestCase):
             {"id": 6, "name": "Protective Phone Case", "price": 499, "category": "Phone Accessories"},
             {"id": 7, "name": "Wireless Mouse", "price": 899, "category": "Computer Accessories"},
             {"id": 8, "name": "TV Soundbar", "price": 4999, "category": "Audio Accessories"},
+            {"id": 9, "name": "Smart TV 55", "price": 45000, "category": "TVs"},
         ]
         self.url_patch = patch.object(tool_router, "PRODUCT_SERVICE_URL", "https://products.test/list")
         self.url_patch.start()
@@ -130,6 +131,17 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertIn("__RELATED_PRODUCTS__", response)
         self.assertIn("Protective Phone Case", response)
         self.assertNotIn("Wireless Mouse", response)
+
+    def test_laptop_search_can_offer_available_computer_addons(self):
+        response = tool_router.handle_product_request("Show laptops")
+        self.assertIn("__RELATED_PRODUCTS__", response)
+        self.assertIn("Wireless Mouse", response)
+
+    def test_tv_search_can_offer_available_tv_addons(self):
+        response = tool_router.handle_product_request("Show TVs")
+        self.assertIn("Smart TV 55", response)
+        self.assertIn("__RELATED_PRODUCTS__", response)
+        self.assertIn("TV Soundbar", response)
 
     def test_small_accessory_search_does_not_trigger_more_suggestions(self):
         response = tool_router.handle_product_request("Show me Wireless Mouse")

@@ -247,11 +247,11 @@ def _major_product_family(product):
         ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?|phones?|mobiles?)\b"),
         ("laptop", r"\b(laptop|notebook computer)\b"),
         ("tv", r"\b(tvs?|televisions?)\b"),
-        ("monitor", r"\b(monitor|display)\\b"),
-        ("printer", r"\b(printer)\\b"),
-        ("camera", r"\b(camera|dslr|mirrorless)\\b"),
-        ("gaming console", r"\b(playstation|xbox|nintendo switch|gaming console)\\b"),
-        ("projector", r"\b(projector)\\b"),
+        ("monitor", r"\b(monitor|display)\b"),
+        ("printer", r"\b(printer)\b"),
+        ("camera", r"\b(camera|dslr|mirrorless)\b"),
+        ("gaming console", r"\b(playstation|xbox|nintendo switch|gaming console)\b"),
+        ("projector", r"\b(projector)\b"),
     )
     for family, pattern in patterns:
         if re.search(pattern, text):

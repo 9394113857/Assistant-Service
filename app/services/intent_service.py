@@ -67,13 +67,21 @@ def detect_intent(message: str):
         return "track_order", 0.92, "rule_v2"
     if re.search(r"\b(recommend|recommendation|suggest)\b", msg):
         return "recommend_product", 0.92, "rule_v2"
-    if re.search(r"\b(cheap|cheaper|lowest price|low price)\b", msg):
+    if re.search(r"\b(cheap|cheaper|lowest price|low price|affordable|budget|under|below)\b", msg):
         return "cheaper_product", 0.90, "rule_v2"
-    if re.search(r"\b(phones?|laptops?|earbuds?)\b", msg):
+    if re.search(
+        r"\b(phones?|mobiles?|smartphones?|laptops?|computers?|"
+        r"earbuds?|headphones?|tablets?|watches?|electronics|accessories)\b",
+        msg,
+    ):
         return "product_category", 0.88, "rule_v2"
     if re.search(r"\b(order|orders)\b", msg):
         return "show_orders", 0.92, "rule_v2"
-    if re.search(r"\b(product|products|catalog|catalogue|items)\b", msg):
+    if re.search(
+        r"\b(product|products|catalog|catalogue|items|inventory|"
+        r"what do you sell|what can i buy)\b",
+        msg,
+    ):
         return "show_products", 0.90, "rule_v2"
 
     return "unknown", 0.0, "rule_v2"

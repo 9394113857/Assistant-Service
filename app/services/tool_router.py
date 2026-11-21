@@ -77,6 +77,12 @@ def _matches_product_query(product, message, catalog_categories=None):
         r"\bwatches?\b": {"watch", "smartwatch"},
         r"\belectronics\b": {"electronics"},
         r"\baccessories\b": {"accessory", "accessories"},
+        r"\b(tvs?|televisions?)\b": {"tv", "television"},
+        r"\bmonitors?\b": {"monitor", "display"},
+        r"\bprinters?\b": {"printer"},
+        r"\bcameras?\b": {"camera", "dslr", "mirrorless"},
+        r"\b(gaming consoles?|playstation|xbox)\b": {"console", "playstation", "xbox"},
+        r"\bprojectors?\b": {"projector"},
     }
 
     requested_aliases = set()
@@ -305,7 +311,9 @@ def handle_product_request(message=""):
             r"\bphones?\b", r"\bmobiles?\b", r"\blaptops?\b",
             r"\bcomputers?\b", r"\bheadphones?\b", r"\bearbuds?\b",
             r"\btablets?\b", r"\bsmart[\s-]*watches?\b", r"\bwatches?\b",
-            r"\belectronics\b", r"\baccessories\b",
+            r"\belectronics\b", r"\baccessories\b", r"\b(tvs?|televisions?)\b",
+            r"\bmonitors?\b", r"\bprinters?\b", r"\bcameras?\b",
+            r"\b(gaming consoles?|playstation|xbox)\b", r"\bprojectors?\b",
         )
         has_known_category = any(
             re.search(pattern, normalized_message) for pattern in category_patterns

@@ -431,7 +431,7 @@ The legacy WhatsApp bot `app.py` was used as a functional reference. The selecte
 
 - `app/intents/information_handler.py` — routes information intents to the service layer.
 - `app/services/public_information_service.py` — contains isolated provider functions for public information lookups.
-- `app/services/intent_service.py` — expanded rule-based intent recognition; model version is currently `rule_v2`.
+- `app/services/intent_service.py` — expanded rule-based intent recognition; rule-based model version is now `rule_v3`.
 - `app/services/intent_registry.py` — maps the expanded intent names to existing and new handlers.
 - `tests/test_intent_service.py` — unit tests for reference commands, e-commerce intents, greeting false positives, and query extraction.
 - `docs/PROJECT_DEVELOPMENT_LOG.md` — date-wise implementation and validation log.
@@ -481,5 +481,20 @@ Never commit real API keys. An example variable file is available at `.env.examp
 4. Verify Angular chat rendering and response behavior.
 5. Review provider reliability, rate limits, and terms before production use.
 6. Choose and verify a reliable COVID statistics provider before enabling that capability.
-7. Review whether product-category and cheaper-product requests need actual filtering in the product service rather than the current generic product-list handler.
+7. Verify public category filtering, explicit budget filtering, and cheapest-first sorting through the live Angular chat after the backend deployment.
 8. Review order tracking so `track_order` can retrieve a specific order status rather than only returning the recent-order list.
+
+
+# 16. Product Chat Regression Fixes — 21-Nov-2026
+
+The following changes are committed to `main` in `Assistant-Service`:
+
+- Fixed follow-up resolution so the standalone word `one` is not matched inside `smartphones` or `headphones`; only prior user messages are used as context.
+- Kept public catalogue/category searches and price searches outside the login-required intent set.
+- Added `cheapest` recognition and ascending price sorting.
+- Added explicit numeric budget parsing for values such as `₹20,000`, `20k`, and `1 lakh`; `below`/ `under` are strict upper bounds, while `up to`/ `within` are inclusive.
+- Added a public general-knowledge route backed by Wikipedia search and page summaries.
+- Added regression tests for intent routing, follow-up resolution, price filtering, sorting, and the general-knowledge answer path.
+- Updated CI to execute the unit test suite.
+
+The Angular chat component and ML training repository were reviewed for this issue but did not require code changes: the frontend parser already accepts the backend's product response format, and the current runtime intent detector is rule-based rather than invoking the trained ML classifier. Do not connect the ML model to live intent routing until it passes the agreed evaluation threshold.

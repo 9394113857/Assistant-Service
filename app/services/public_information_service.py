@@ -119,7 +119,7 @@ def _get_country_capital(country):
                         item.get("name", {}).get("official", "").casefold(),
                     }
                 ),
-                data[0] if data else None,
+                None,
             )
             capitals = exact_match.get("capital", []) if exact_match else []
             if capitals and capitals[0]:

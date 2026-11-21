@@ -61,21 +61,21 @@ def detect_intent(message: str):
 
     # Product price ranking: detect highest-price requests before budget/category rules.
     if re.search(
-        r"\\b(costliest|most expensive|highest[- ]priced|highest price|priciest|dearest)\\b",
+        r"\b(costliest|most expensive|highest[- ]priced|highest price|priciest|dearest)\b",
         msg,
     ):
         return "costliest_product", 0.94, "rule_v3"
 
     if re.search(
-        r"\\b(cheapest|cheaper|lowest[- ]priced|lowest price|least expensive)\\b",
+        r"\b(cheapest|cheaper|lowest[- ]priced|lowest price|least expensive)\b",
         msg,
     ):
         return "cheaper_product", 0.94, "rule_v3"
 
     # Budget and price-range requests stay public product searches.
     if re.search(
-        r"\\b(cheap|affordable|budget|under|below|less than|within|up to|"
-        r"between|from|above|over|more than|greater than|at least|minimum price)\\b",
+        r"\b(cheap|affordable|budget|under|below|less than|within|up to|"
+        r"between|from|above|over|more than|greater than|at least|minimum price)\b",
         msg,
     ):
         return "cheaper_product", 0.92, "rule_v3"

@@ -238,7 +238,7 @@ def _major_product_family(product):
 
     text = " ".join(str(product.get(field, "") or "") for field in ("name", "category", "description")).lower()
     patterns = (
-        ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?)\b"),
+        ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?|phones?|mobiles?)\b"),
         ("laptop", r"\b(laptop|notebook computer)\\b"),
         ("tv", r"\b(tv|television|smart tv)\\b"),
         ("monitor", r"\b(monitor|display)\\b"),
@@ -253,14 +253,18 @@ def _major_product_family(product):
     return None
 
 
-def _related_products(products, catalogue):
-    """Return a few in-catalogue add-ons for selected major products only."""
+def _related_products(products, catalogue, message=""):
+    """Return add-ons only when the customer explicitly asks about a major product."""
+    requested_family = _major_product_family({"name": message})
+    if not requested_family:
+        return []
+
     families = {
         family
         for product in products
         if isinstance(product, dict)
         for family in [_major_product_family(product)]
-        if family
+        if family == requested_family
     }
     if not families:
         return []
@@ -434,7 +438,7 @@ def handle_product_request(message=""):
 
         # Keep add-ons out of the main results. The storefront chat UI renders
         # this marked section as a collapsed, customer-controlled disclosure.
-        related = _related_products(products[:10], catalogue=all_products)
+        related = _related_products(products[:10], catalogue=all_products, message=normalized_message)
         if related:
             result += "\n__RELATED_PRODUCTS__\nYou may also need (optional):\n"
             for product in related:

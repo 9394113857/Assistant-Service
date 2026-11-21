@@ -5,10 +5,8 @@ from app.services.tool_router import handle_product_request
 class ProductHandler(BaseIntentHandler):
 
     def handle(self, user_id: int, message: str) -> str:
-
         try:
-            # Router already handles product fetching + formatting
-            response = handle_product_request()
+            response = handle_product_request(message=message)
 
             if not response:
                 return "Sorry, I couldn't find any products right now."

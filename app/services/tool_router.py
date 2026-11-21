@@ -119,14 +119,24 @@ def handle_product_request(message=""):
 
         price_limit = _extract_price_limit(normalized_message)
         if price_limit is not None:
+            inclusive_limit = bool(re.search(
+                r"\\b(up to|within|maximum(?: budget)?(?: of)?)\\b",
+                normalized_message,
+            ))
             products = [
                 product for product in products
                 if _product_price(product) is not None
-                and _product_price(product) <= price_limit
+                and (
+                    _product_price(product) <= price_limit
+                    if inclusive_limit
+                    else _product_price(product) < price_limit
+                )
             ]
             if not products:
+                limit_label = "at or below" if inclusive_limit else "below"
                 return (
-                    f"No products were found below {_format_product_price(price_limit)}. "
+                    f"No products were found {limit_label} "
+                    f"{_format_product_price(price_limit)}. "
                     "Try increasing your budget or browsing all products."
                 )
 

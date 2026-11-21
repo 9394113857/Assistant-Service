@@ -50,6 +50,19 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertIn("Item-21", response)
         self.assertNotIn("Laptop", response)
 
+    def test_headphones_search_does_not_return_smartphones(self):
+        response = tool_router.handle_product_request("Show me headphones")
+        self.assertEqual(
+            response,
+            "I couldn't find products matching that category.",
+        )
+
+    def test_laptop_search_returns_laptops(self):
+        response = tool_router.handle_product_request("Show me laptops")
+        self.assertIn("Laptop", response)
+        self.assertIn("Gaming Laptop Pro", response)
+        self.assertNotIn("Item-21", response)
+
     def test_cheapest_product_sorts_lowest_price_first(self):
         response = tool_router.handle_product_request("What is your cheapest product?")
         self.assertLess(response.index("Budget Phone"), response.index("Item-21"))

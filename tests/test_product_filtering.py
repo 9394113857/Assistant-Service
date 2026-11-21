@@ -23,6 +23,9 @@ class ProductFilteringTests(unittest.TestCase):
             {"id": 3, "name": "Item-21", "price": 21000, "category": "Smart Phones"},
             {"id": 4, "name": "Budget Phone", "price": 15000, "category": "Smart Phones"},
             {"id": 5, "name": "Exactly Twenty Thousand", "price": 20000, "category": "Electronics"},
+            {"id": 6, "name": "Protective Phone Case", "price": 499, "category": "Phone Accessories"},
+            {"id": 7, "name": "Wireless Mouse", "price": 899, "category": "Computer Accessories"},
+            {"id": 8, "name": "TV Soundbar", "price": 4999, "category": "Audio Accessories"},
         ]
         self.url_patch = patch.object(tool_router, "PRODUCT_SERVICE_URL", "https://products.test/list")
         self.url_patch.start()
@@ -121,6 +124,30 @@ class ProductFilteringTests(unittest.TestCase):
 
         range_bounds = tool_router._extract_price_bounds("₹20k-₹50k")
         self.assertEqual((range_bounds["lower"], range_bounds["upper"]), (20000, 50000))
+
+    def test_smartphone_results_show_only_available_related_addons(self):
+        response = tool_router.handle_product_request("Show smartphones under ₹25,000")
+        self.assertIn("__RELATED_PRODUCTS__", response)
+        self.assertIn("Protective Phone Case", response)
+        self.assertNotIn("Wireless Mouse", response)
+
+    def test_small_accessory_search_does_not_trigger_more_suggestions(self):
+        response = tool_router.handle_product_request("Show me Wireless Mouse")
+        self.assertIn("Wireless Mouse", response)
+        self.assertNotIn("__RELATED_PRODUCTS__", response)
+
+    def test_related_products_are_silently_skipped_when_none_match(self):
+        original = tool_router.requests.get
+        try:
+            tool_router.requests.get = lambda *args, **kwargs: FakeResponse([
+                {"id": 1, "name": "Gaming Laptop Pro", "price": 75000, "category": "Electronics"}
+            ])
+            response = tool_router.handle_product_request("Show laptops")
+        finally:
+            tool_router.requests.get = original
+        self.assertIn("Gaming Laptop Pro", response)
+        self.assertNotIn("__RELATED_PRODUCTS__", response)
+        self.assertNotIn("no related", response.lower())
 
     def test_short_budget_suffix_is_parsed(self):
         self.assertEqual(tool_router._extract_price_limit("under 20k"), 20000)

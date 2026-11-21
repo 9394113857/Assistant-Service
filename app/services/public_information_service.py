@@ -31,6 +31,64 @@ def _query_after_command(message, commands):
     return text.strip(" ?.!#")
 
 
+def get_general_knowledge(message):
+    """Answer general factual questions with a live Wikipedia search/summary."""
+    question = (message or "").strip()
+    capital_match = re.search(r"\bcapital of\s+(.+?)[?.!]*$", question, flags=re.IGNORECASE)
+    if capital_match:
+        subject = capital_match.group(1).strip()
+        search_term = f"capital of {subject}"
+    else:
+        search_term = re.sub(
+            r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is|what are|who is|where is|when was|how does|why does)\s+",
+            "",
+            question,
+            flags=re.IGNORECASE,
+        ).strip(" ?.!")
+
+    if not search_term:
+        return "Please rephrase your question so I can look it up."
+
+    try:
+        search_data = _get_json(
+            "https://en.wikipedia.org/w/api.php",
+            params={
+                "action": "query",
+                "list": "search",
+                "srsearch": search_term,
+                "format": "json",
+                "srlimit": 1,
+            },
+            headers={"User-Agent": "AssistantService/1.0 (web chat)"},
+        )
+        results = search_data.get("query", {}).get("search", [])
+        if not results:
+            return f"I couldn't find a reliable reference for '{search_term}'."
+
+        title = results[0].get("title", "")
+        if not title:
+            return f"I couldn't find a reliable reference for '{search_term}'."
+
+        summary = _get_json(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(title.replace(' ', '_'))}",
+            headers={"User-Agent": "AssistantService/1.0 (web chat)"},
+        )
+        extract = summary.get("extract", "").strip()
+        page_url = summary.get("content_urls", {}).get("desktop", {}).get("page", "")
+
+        if capital_match:
+            country = subject.strip(" ?.! ")
+            answer = f"The capital of {country} is {title}."
+        elif extract:
+            answer = f"{title}: {extract[:1200]}"
+        else:
+            answer = f"The closest Wikipedia result is {title}."
+
+        return f"{answer}\n\nSource: {page_url}" if page_url else answer
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        return "General information lookup is temporarily unavailable. Please try again."
+
+
 def get_joke():
     try:
         data = _get_json("https://official-joke-api.appspot.com/jokes/general/random")
@@ -217,9 +275,6 @@ def get_quote():
 
 
 def get_covid_stats():
-    # The original WhatsApp reference used a retired third-party endpoint.
-    # Require an explicitly configured replacement instead of silently
-    # returning stale or fabricated public-health figures.
     endpoint = os.getenv("COVID_STATS_API_URL")
     if not endpoint:
         return (
@@ -257,6 +312,7 @@ def handle_information_request(intent, message):
         "wikipedia": lambda: get_wikipedia_summary(message),
         "quote": lambda: get_quote(),
         "covid_stats": lambda: get_covid_stats(),
+        "general_knowledge": lambda: get_general_knowledge(message),
     }
     handler = handlers.get(intent)
     if not handler:

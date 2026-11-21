@@ -1,35 +1,41 @@
+import re
+
+
 def resolve_followup(message: str, previous_messages: list) -> str:
-    """
-    Resolve follow-up conversational queries
-    using recent conversation context.
-    """
+    """Resolve short follow-ups without matching words inside product names."""
+    message_lower = (message or "").lower().strip()
 
-    message_lower = message.lower()
-
-    # If message already contains product/order keywords
-    if any(word in message_lower for word in [
-        "product", "products", "item", "items",
-        "order", "orders", "recommend"
-    ]):
+    # Explicit product, category, order, or recommendation wording is already
+    # meaningful. Do not rewrite it based on older conversation turns.
+    if re.search(
+        r"\b(product|products|item|items|order|orders|recommend|"
+        r"phone|phones|mobile|mobiles|smartphone|smartphones|laptop|laptops|"
+        r"computer|computers|headphone|headphones|earbud|earbuds|tablet|tablets)\b",
+        message_lower,
+    ):
         return message
 
-    # Check previous context
-    for msg in reversed(previous_messages):
+    # Only user messages establish context. Assistant replies often contain
+    # generic words such as "products" and must not drive intent resolution.
+    for previous in reversed(previous_messages or []):
+        previous_text = str(previous).strip()
+        if ":" in previous_text:
+            role, text = previous_text.split(":", 1)
+            if role.strip().lower() != "user":
+                continue
+            text = text.strip().lower()
+        else:
+            text = previous_text.lower()
 
-        text = msg.lower()
+        if not re.search(r"\b(product|products|item|items)\b", text):
+            continue
 
-        if "product" in text or "show products" in text:
+        # Match the standalone pronoun "one", never the letters inside
+        # "smartphones", "headphones", or other product names.
+        if re.search(r"\b(one|another one)\b", message_lower):
+            return "recommend product"
 
-            if "recommend" in message_lower or "one" in message_lower:
-                return "recommend product"
-
-            if "cheap" in message_lower or "cheaper" in message_lower:
-                return "cheap product"
-
-            if "laptop" in message_lower:
-                return "show laptop products"
-
-            if "phone" in message_lower:
-                return "show phone products"
+        if re.search(r"\b(cheapest|cheap|cheaper|affordable|budget)\b", message_lower):
+            return message
 
     return message

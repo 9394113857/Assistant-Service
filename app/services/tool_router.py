@@ -223,6 +223,19 @@ _RELATED_PRODUCT_TERMS = {
 }
 
 def _major_product_family(product):
+    product_name = str(product.get("name", "") or "").lower()
+    accessory_markers = (
+        "phone case", "case", "cover", "screen protector", "tempered glass",
+        "charger", "power bank", "earbud", "headphone", "mouse", "keyboard",
+        "laptop bag", "sleeve", "cooling pad", "usb hub", "laptop stand",
+        "external drive", "soundbar", "speaker", "hdmi cable", "tv mount",
+        "wall mount", "streaming stick", "monitor arm", "webcam", "ink",
+        "toner", "printer paper", "tripod", "memory card", "camera bag",
+        "camera lens", "controller", "gaming headset", "projector screen",
+    )
+    if any(marker in product_name for marker in accessory_markers):
+        return None
+
     text = " ".join(str(product.get(field, "") or "") for field in ("name", "category", "description")).lower()
     patterns = (
         ("smartphone", r"\b(smart ?phones?|mobile phones?|cell ?phones?)\b"),

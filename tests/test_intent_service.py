@@ -58,18 +58,42 @@ class IntentServiceTests(unittest.TestCase):
         )
 
     @patch("app.services.public_information_service._get_json")
-    def test_capital_question_returns_a_cited_wikipedia_answer(self, mock_get_json):
+    def test_capital_question_uses_wikidata_capital_claim(self, mock_get_json):
         mock_get_json.side_effect = [
-            {"query": {"search": [{"title": "Tokyo"}]}},
             {
-                "extract": "Tokyo is the capital of Japan.",
-                "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Tokyo"}},
+                "search": [
+                    {"id": "Q17", "label": "Japan", "description": "country in East Asia"}
+                ]
+            },
+            {
+                "entities": {
+                    "Q17": {
+                        "claims": {
+                            "P36": [
+                                {
+                                    "mainsnak": {
+                                        "datavalue": {
+                                            "value": {"id": "Q1490"}
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "entities": {
+                    "Q1490": {
+                        "labels": {"en": {"value": "Tokyo"}}
+                    }
+                }
             },
         ]
         response = get_general_knowledge("What is the capital of Japan?")
         self.assertIn("The capital of Japan is Tokyo.", response)
         self.assertIn("https://en.wikipedia.org/wiki/Tokyo", response)
-        self.assertEqual(mock_get_json.call_count, 2)
+        self.assertEqual(mock_get_json.call_count, 3)
 
     def test_public_product_intents_do_not_require_login(self):
         self.assertNotIn("product_category", LOGIN_REQUIRED_INTENTS)

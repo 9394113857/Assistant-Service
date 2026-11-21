@@ -11,6 +11,7 @@ INTENT_HANDLER_MAP = {
     "product": ProductHandler,
     "show_products": ProductHandler,
     "cheaper_product": ProductHandler,
+    "costliest_product": ProductHandler,
     "product_category": ProductHandler,
     "order": OrderHandler,
     "show_orders": OrderHandler,

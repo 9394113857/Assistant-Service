@@ -32,24 +32,101 @@ def _query_after_command(message, commands):
 
 
 def get_general_knowledge(message):
-    """Answer general factual questions with a live Wikipedia search/summary."""
+    """Answer factual questions; resolve country capitals through Wikidata."""
     question = (message or "").strip()
-    capital_match = re.search(r"\bcapital of\s+(.+?)[?.!]*$", question, flags=re.IGNORECASE)
-    if capital_match:
-        subject = capital_match.group(1).strip()
-        search_term = f"capital of {subject}"
-    else:
+    capital_match = re.search(
+        r"\\bcapital of\\s+(.+?)[?.!]*$",
+        question,
+        flags=re.IGNORECASE,
+    )
+
+    try:
+        if capital_match:
+            country = capital_match.group(1).strip(" ?.! ")
+            search_data = _get_json(
+                "https://www.wikidata.org/w/api.php",
+                params={
+                    "action": "wbsearchentities",
+                    "search": country,
+                    "language": "en",
+                    "format": "json",
+                    "limit": 5,
+                },
+                headers={"User-Agent": "AssistantService/1.0 (web chat)"},
+            )
+            entities = search_data.get("search", [])
+            country_entity = next(
+                (
+                    item for item in entities
+                    if item.get("label", "").casefold() == country.casefold()
+                ),
+                entities[0] if entities else None,
+            )
+            if not country_entity or not country_entity.get("id"):
+                return f"I couldn't verify the capital of {country}."
+
+            country_data = _get_json(
+                "https://www.wikidata.org/w/api.php",
+                params={
+                    "action": "wbgetentities",
+                    "ids": country_entity["id"],
+                    "props": "claims",
+                    "format": "json",
+                },
+                headers={"User-Agent": "AssistantService/1.0 (web chat)"},
+            )
+            country_claims = country_data.get("entities", {}).get(
+                country_entity["id"], {}
+            ).get("claims", {})
+            capital_claims = country_claims.get("P36", [])
+            capital_id = None
+            for claim in capital_claims:
+                capital_id = (
+                    claim.get("mainsnak", {})
+                    .get("datavalue", {})
+                    .get("value", {})
+                    .get("id")
+                )
+                if capital_id:
+                    break
+
+            if not capital_id:
+                return f"I couldn't verify the capital of {country} from Wikidata."
+
+            capital_data = _get_json(
+                "https://www.wikidata.org/w/api.php",
+                params={
+                    "action": "wbgetentities",
+                    "ids": capital_id,
+                    "props": "labels",
+                    "languages": "en",
+                    "format": "json",
+                },
+                headers={"User-Agent": "AssistantService/1.0 (web chat)"},
+            )
+            capital_label = (
+                capital_data.get("entities", {})
+                .get(capital_id, {})
+                .get("labels", {})
+                .get("en", {})
+                .get("value")
+            )
+            if not capital_label:
+                return f"I found the capital entity for {country}, but couldn't retrieve its English name."
+
+            page_url = f"https://en.wikipedia.org/wiki/{quote(capital_label.replace(' ', '_'))}"
+            return f"The capital of {country} is {capital_label}.\\n\\nSource: {page_url}"
+
         search_term = re.sub(
-            r"^(please\s+)?(can you\s+)?(tell me\s+)?(what is|what are|who is|where is|when was|how does|why does)\s+",
+            r"^(please\\s+)?(can you\\s+)?(tell me\\s+)?(what is|what are|who is|where is|when was|how does|why does)\\s+",
             "",
             question,
             flags=re.IGNORECASE,
         ).strip(" ?.!")
 
-    if not search_term:
-        return "Please rephrase your question so I can look it up."
+        if not search_term:
+            return "Please rephrase your question so I can look it up."
 
-    try:
         search_data = _get_json(
             "https://en.wikipedia.org/w/api.php",
             params={
@@ -75,19 +152,13 @@ def get_general_knowledge(message):
         )
         extract = summary.get("extract", "").strip()
         page_url = summary.get("content_urls", {}).get("desktop", {}).get("page", "")
+        if not extract:
+            return f"I found '{title}', but couldn't retrieve a summary."
+        answer = f"{title}: {extract[:1200]}"
+        return f"{answer}\\n\\nSource: {page_url}" if page_url else answer
 
-        if capital_match:
-            country = subject.strip(" ?.! ")
-            answer = f"The capital of {country} is {title}."
-        elif extract:
-            answer = f"{title}: {extract[:1200]}"
-        else:
-            answer = f"The closest Wikipedia result is {title}."
-
-        return f"{answer}\n\nSource: {page_url}" if page_url else answer
     except (requests.RequestException, ValueError, TypeError, KeyError):
         return "General information lookup is temporarily unavailable. Please try again."
-
 
 def get_joke():
     try:

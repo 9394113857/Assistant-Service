@@ -1,0 +1,134 @@
+
+# ============================================================
+# Assistant-Service - Manual Database Migration
+# ============================================================
+# Purpose:
+#   Apply pending Flask/Alembic database migrations manually.
+#
+# Trigger:
+#   ONLY through GitHub Actions -> Run workflow.
+#
+# Important:
+#   1. Configure DATABASE_URL in GitHub repository secrets.
+#   2. Confirm the target database before running.
+#   3. Run this workflow before deploying the new container.
+# ============================================================
+
+name: "🗄️ Manual - Assistant Service Database Migration"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_migration:
+        description: "Confirm that you want to apply database migrations"
+        required: true
+        type: boolean
+        default: false
+
+# Prevent multiple migration workflows running together.
+concurrency:
+  group: assistant-service-database-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+
+  database-migration:
+
+    name: "Apply Database Migrations"
+
+    # Run only after explicit manual confirmation.
+    if: ${{ inputs.confirm_migration == true }}
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+
+    env:
+      # ------------------------------------------------------
+      # REPLACE / CONFIGURE THIS SECRET NAME IF REQUIRED
+      # GitHub -> Settings -> Secrets and variables -> Actions
+      # Secret name: DATABASE_URL
+      # Value: Assistant-Service target PostgreSQL connection URL
+      # ------------------------------------------------------
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Flask application entry point
+      FLASK_APP: run:app
+
+      # Python environment
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+
+      # ------------------------------------------------------
+      # STEP 1: Checkout repository
+      # ------------------------------------------------------
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------
+      # STEP 2: Setup Python
+      # ------------------------------------------------------
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.9"
+          cache: "pip"
+
+      # ------------------------------------------------------
+      # STEP 3: Validate database configuration
+      # ------------------------------------------------------
+      - name: "🔐 Validate Database Configuration"
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "ERROR: DATABASE_URL secret is missing."
+            exit 1
+          fi
+
+          if [[ "$DATABASE_URL" == sqlite* ]]; then
+            echo "ERROR: SQLite is not allowed for this migration workflow."
+            exit 1
+          fi
+
+          echo "Database configuration is present."
+
+      # ------------------------------------------------------
+      # STEP 4: Install Python dependencies
+      # ------------------------------------------------------
+      - name: "📦 Install Dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ------------------------------------------------------
+      # STEP 5: Check current migration revision
+      # ------------------------------------------------------
+      - name: "🔍 Check Current Database Migration"
+        run: |
+          flask --app run:app db current
+
+      # ------------------------------------------------------
+      # STEP 6: Apply pending migrations
+      # ------------------------------------------------------
+      - name: "🚀 Apply Database Migrations"
+        run: |
+          flask --app run:app db upgrade
+
+      # ------------------------------------------------------
+      # STEP 7: Verify migration revision
+      # ------------------------------------------------------
+      - name: "✅ Verify Database Migration"
+        run: |
+          flask --app run:app db current
+
+      # ------------------------------------------------------
+      # STEP 8: Success
+      # ------------------------------------------------------
+      - name: "🎉 Migration Completed"
+        run: |
+          echo "Database migration workflow completed successfully."
+          echo "You can now proceed with the Assistant-Service deployment."

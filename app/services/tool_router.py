@@ -455,12 +455,17 @@ def handle_product_request(message=""):
             heading = "Here are the matching products:"
 
         result = heading + "\n"
+        show_details = bool(re.search(r"\b(details?|specifications?|specs)\b", normalized_message))
         for product in products[:10]:
             name = product.get("name", "Unknown")
             price = _format_product_price(product.get("price"))
             category = product.get("category")
             category_label = f" | Category: {category}" if category else ""
-            result += f"- {name} | Price: {price}{category_label}\n"
+            description = str(product.get("description", "") or "").strip()
+            details_label = f" | Description: {description}" if show_details and description else ""
+            result += f"- {name} | Price: {price}{category_label}{details_label}\n"
+            if show_details and not description:
+                result += "  Additional specifications are not available in the current catalogue.\n"
 
         # Keep add-ons out of the main results. The storefront chat UI renders
         # this marked section as a collapsed, customer-controlled disclosure.

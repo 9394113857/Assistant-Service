@@ -22,7 +22,7 @@ The existing response contract remains:
   "response": "Weather details...",
   "intent": "weather",
   "confidence": 0.94,
-  "model_version": "rule_v3"
+  "model_version": "rule_v4"
 }
 ```
 

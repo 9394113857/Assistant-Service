@@ -32,6 +32,7 @@ INTENT_HANDLER_MAP = {
     "greeting": GreetingHandler,
     "assistant_identity": GreetingHandler,
     "assistant_about": GreetingHandler,
+    "clarification": GreetingHandler,
 
     # Public information capabilities
     "weather": InformationHandler,

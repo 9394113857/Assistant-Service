@@ -25,13 +25,23 @@ class GreetingHandler(BaseIntentHandler):
         if "who are you" in msg or "your name" in msg:
             return "I'm your AI Assistant 🤖, built to help with products, orders, recommendations, and general information."
 
-        if msg in {"about", "#about", "help", "#help", "features", "what can you do"}:
+        if (
+            msg in {"about", "#about", "help", "#help", "features"}
+            or "what can you do" in msg
+            or "what can you help" in msg
+            or "how can you help" in msg
+            or "what services do you offer" in msg
+            or "information about your services" in msg
+            or "tell me about your services" in msg
+            or "what do you offer" in msg
+        ):
             return (
-                "I'm your AI Assistant. I can help with products, orders, and "
-                "recommendations, and I can also look up weather, news, books, "
-                "movies, word meanings, synonyms, Wikipedia summaries, jokes, "
-                "facts, and quotes. Try asking naturally, for example: "
-                "'weather in Hyderabad' or 'meaning of Python'."
+                "I'm your AI Assistant. I can help you browse products, check "
+                "catalogue prices, access your orders when you're logged in, "
+                "and provide recommendations. I can also look up weather, news, "
+                "books, movies, word meanings, synonyms, Wikipedia summaries, "
+                "jokes, facts, and quotes. Some commerce actions, including cart "
+                "updates and live stock checks, are not yet available in chat."
             )
 
         if "how are you" in msg:

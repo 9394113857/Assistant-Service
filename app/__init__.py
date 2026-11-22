@@ -6,7 +6,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 from flask import Flask, jsonify, request
 from .config import Config
-from .extensions import db, migrate
+from .extensions import db, migrate, jwt
 from flask_cors import CORS
 
 # ✅ IMPORTANT: Import models so Alembic detects them
@@ -30,6 +30,7 @@ def create_app(testing: bool = False):
         app.config["TESTING"] = True
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
         app.config["SECRET_KEY"] = "test-secret"
+        app.config["JWT_SECRET_KEY"] = "test-jwt-secret"
 
     # --------------------------
     # Extensions
@@ -38,6 +39,7 @@ def create_app(testing: bool = False):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    jwt.init_app(app)
 
     # --------------------------
     # 🔥 Load ML Model at Startup

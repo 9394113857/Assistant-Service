@@ -66,8 +66,12 @@ jobs:
       # ------------------------------------------------------
       # STEP 1: Checkout repository
       # ------------------------------------------------------
-      - name: "📥 Checkout Repository"
+      - name: "📥 Checkout Main Branch"
         uses: actions/checkout@v4
+        with:
+          # Always run migrations using code already merged into main.
+          # Do not apply production migrations from an unmerged feature branch.
+          ref: main
 
       # ------------------------------------------------------
       # STEP 2: Setup Python
@@ -75,7 +79,9 @@ jobs:
       - name: "🐍 Setup Python"
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11.9"
+          # Use the latest available Python 3.11 patch release.
+          # Avoid pinning 3.11.9, which is unavailable on some hosted runners.
+          python-version: "3.11"
           cache: "pip"
 
       # ------------------------------------------------------

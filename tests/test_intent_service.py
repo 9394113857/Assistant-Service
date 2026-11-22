@@ -193,7 +193,7 @@ class IntentServiceTests(unittest.TestCase):
     def test_followup_resolves_ordinal_product_reference_from_assistant_list(self):
         history = [
             "user: Show me all products",
-            "assistant: Here are the products I found for you.\\n- Gaming Laptop Pro — ₹75,000 · Electronics\\n- Laptop — ₹55,000",
+            "assistant: Here are the products I found for you.\n- Gaming Laptop Pro — ₹75,000 · Electronics\n- Laptop — ₹55,000",
         ]
         self.assertEqual(
             resolve_followup("Show me the details of the first product.", history),
@@ -202,7 +202,7 @@ class IntentServiceTests(unittest.TestCase):
 
     def test_followup_resolves_this_product_from_assistant_list(self):
         history = [
-            "assistant: Here are the products I found for you.\\n- Gaming Laptop Pro | Price: ₹75,000",
+            "assistant: Here are the products I found for you.\n- Gaming Laptop Pro | Price: ₹75,000",
         ]
         self.assertEqual(
             resolve_followup("What is the price of this product?", history),

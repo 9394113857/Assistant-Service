@@ -39,12 +39,12 @@ def resolve_followup(message: str, previous_messages: list) -> str:
     products = _assistant_products(previous_messages)
 
     # Resolve explicit ordinal references such as "the first product".
-    ordinal_match = re.search(r"\b(first|second|third)\s+(?:product|item|one)\b", message_lower)
+    ordinal_match = re.search(r"\b(?:the\s+)?(first|second|third)\s+(?:product|item|one)\b", message_lower)
     if ordinal_match and products:
         index = {"first": 0, "second": 1, "third": 2}[ordinal_match.group(1)]
         if index < len(products):
             return re.sub(
-                r"\b(first|second|third)\s+(?:product|item|one)\b",
+                r"\b(?:the\s+)?(first|second|third)\s+(?:product|item|one)\b",
                 products[index],
                 message_text,
                 count=1,

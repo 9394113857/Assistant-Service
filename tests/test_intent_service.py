@@ -32,7 +32,7 @@ class IntentServiceTests(unittest.TestCase):
                 intent, confidence, version = detect_intent(message)
                 self.assertEqual(intent, expected)
                 self.assertGreaterEqual(confidence, 0.60)
-                self.assertEqual(version, "rule_v3")
+                self.assertEqual(version, "rule_v4")
 
     def test_ecommerce_intents_keep_public_search_separate_from_private_actions(self):
         cases = {
@@ -163,6 +163,8 @@ class IntentServiceTests(unittest.TestCase):
     def test_natural_language_greetings_and_about_are_recognized(self):
         self.assertEqual(detect_intent("hello bro")[0], "greeting")
         self.assertEqual(detect_intent("what can you do?")[0], "assistant_about")
+        self.assertEqual(detect_intent("help me with something else")[0], "assistant_about")
+        self.assertEqual(detect_intent("Can you explain that in simpler words?")[0], "clarification")
 
     def test_information_query_extraction_supports_natural_language(self):
         self.assertEqual(

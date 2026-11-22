@@ -328,6 +328,26 @@ def handle_product_request(message=""):
             if isinstance(product, dict) and product.get("category")
         ))
 
+        # If the customer names a specific catalogue product, prefer that exact
+        # product over the broader category (e.g. "Gaming Laptop Pro" vs all laptops).
+        explicit_product_matches = []
+        for product in products:
+            product_name = str(product.get("name", "") or "").strip()
+            if product_name and re.search(
+                r"(?<![a-z0-9])" + re.escape(product_name.lower()) + r"(?![a-z0-9])",
+                normalized_message,
+            ):
+                explicit_product_matches.append(product)
+
+        if explicit_product_matches:
+            longest_name = max(
+                len(str(product.get("name", ""))) for product in explicit_product_matches
+            )
+            products = [
+                product for product in explicit_product_matches
+                if len(str(product.get("name", ""))) == longest_name
+            ]
+
         # Apply a category filter only when the customer actually names one.
         category_patterns = (
             r"\bsmart[\s-]*phones?\b", r"\bmobile[\s-]*phones?\b",
@@ -349,7 +369,7 @@ def handle_product_request(message=""):
             for category in catalog_categories
             if _normalize_category(category)
         )
-        if has_known_category or has_catalog_category:
+        if (not explicit_product_matches) and (has_known_category or has_catalog_category):
             products = [
                 product for product in products
                 if _matches_product_query(product, normalized_message, catalog_categories)
@@ -435,12 +455,17 @@ def handle_product_request(message=""):
             heading = "Here are the matching products:"
 
         result = heading + "\n"
+        show_details = bool(re.search(r"\b(details?|specifications?|specs)\b", normalized_message))
         for product in products[:10]:
             name = product.get("name", "Unknown")
             price = _format_product_price(product.get("price"))
             category = product.get("category")
             category_label = f" | Category: {category}" if category else ""
-            result += f"- {name} | Price: {price}{category_label}\n"
+            description = str(product.get("description", "") or "").strip()
+            details_label = f" | Description: {description}" if show_details and description else ""
+            result += f"- {name} | Price: {price}{category_label}{details_label}\n"
+            if show_details and not description:
+                result += "  Additional specifications are not available in the current catalogue.\n"
 
         # Keep add-ons out of the main results. The storefront chat UI renders
         # this marked section as a collapsed, customer-controlled disclosure.

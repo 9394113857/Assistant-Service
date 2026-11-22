@@ -67,6 +67,11 @@ class ProductFilteringTests(unittest.TestCase):
         self.assertIn("Gaming Laptop Pro", response)
         self.assertNotIn("Item-21", response)
 
+    def test_explicit_product_name_is_not_broadened_to_entire_category(self):
+        response = tool_router.handle_product_request("Show details of Gaming Laptop Pro")
+        self.assertIn("Gaming Laptop Pro", response)
+        self.assertNotIn("\\n- Laptop |", response)
+
     def test_cheapest_product_sorts_lowest_price_first(self):
         response = tool_router.handle_product_request("What is your cheapest product?")
         self.assertLess(response.index("Budget Phone"), response.index("Item-21"))

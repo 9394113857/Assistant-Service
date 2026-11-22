@@ -28,13 +28,24 @@ def admin_required(view):
 
 
 @assistant_bp.post("/chat")
+@jwt_required(optional=True)
 def chat():
     data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
     message = data.get("message")
 
     if not isinstance(message, str) or not message.strip():
         return jsonify({"error": "message is required"}), 400
+
+    # Never trust a user_id supplied in the request body. Authenticated identity
+    # must come from the verified Auth-Service JWT; no token means guest chat.
+    token_identity = get_jwt_identity()
+    if token_identity is None:
+        user_id = None
+    else:
+        try:
+            user_id = int(token_identity)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid authenticated user identity"}), 401
 
     result = process_user_message(user_id, message)
     return jsonify(result)

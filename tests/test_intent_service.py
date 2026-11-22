@@ -32,7 +32,7 @@ class IntentServiceTests(unittest.TestCase):
                 intent, confidence, version = detect_intent(message)
                 self.assertEqual(intent, expected)
                 self.assertGreaterEqual(confidence, 0.60)
-                self.assertEqual(version, "rule_v3")
+                self.assertEqual(version, "rule_v4")
 
     def test_ecommerce_intents_keep_public_search_separate_from_private_actions(self):
         cases = {
@@ -70,6 +70,28 @@ class IntentServiceTests(unittest.TestCase):
             detect_intent("What is the capital of Japan?")[0],
             "general_knowledge",
         )
+
+    def test_real_chat_messages_route_to_specific_intents(self):
+        cases = {
+            "What can you help me with?": "assistant_about",
+            "I am looking for some information about your services.": "assistant_about",
+            "Which products are available in stock?": "product_stock",
+            "Show me the details of the first product.": "product_detail",
+            "What is the price of this product?": "product_price",
+            "Do you have any alternative products?": "product_alternatives",
+            "I want to add a product to my cart.": "add_to_cart",
+            "Show me my cart items.": "view_cart",
+            "How many items are in my cart?": "view_cart",
+            "I need help choosing a suitable product.": "product_advice",
+            "Can you explain the difference between these two products?": "product_compare",
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(detect_intent(message)[0], expected)
+
+    def test_deictic_or_gibberish_questions_do_not_trigger_general_search(self):
+        self.assertEqual(detect_intent("asdfghjkl what is this")[0], "unknown")
+        self.assertEqual(detect_intent("what is this?")[0], "unknown")
 
     @patch("app.services.public_information_service._get_json")
     def test_capital_question_uses_rest_countries_primary_provider(self, mock_get_json):
@@ -141,6 +163,8 @@ class IntentServiceTests(unittest.TestCase):
     def test_natural_language_greetings_and_about_are_recognized(self):
         self.assertEqual(detect_intent("hello bro")[0], "greeting")
         self.assertEqual(detect_intent("what can you do?")[0], "assistant_about")
+        self.assertEqual(detect_intent("help me with something else")[0], "assistant_about")
+        self.assertEqual(detect_intent("Can you explain that in simpler words?")[0], "clarification")
 
     def test_information_query_extraction_supports_natural_language(self):
         self.assertEqual(
@@ -164,6 +188,25 @@ class IntentServiceTests(unittest.TestCase):
         self.assertEqual(
             resolve_followup("Show me headphones", history),
             "Show me headphones",
+        )
+
+    def test_followup_resolves_ordinal_product_reference_from_assistant_list(self):
+        history = [
+            "user: Show me all products",
+            "assistant: Here are the products I found for you.\n- Gaming Laptop Pro — ₹75,000 · Electronics\n- Laptop — ₹55,000",
+        ]
+        self.assertEqual(
+            resolve_followup("Show me the details of the first product.", history),
+            "Show me the details of Gaming Laptop Pro.",
+        )
+
+    def test_followup_resolves_this_product_from_assistant_list(self):
+        history = [
+            "assistant: Here are the products I found for you.\n- Gaming Laptop Pro | Price: ₹75,000",
+        ]
+        self.assertEqual(
+            resolve_followup("What is the price of this product?", history),
+            "What is the price of Gaming Laptop Pro?",
         )
 
     def test_followup_only_uses_user_messages_as_context(self):

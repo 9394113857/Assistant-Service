@@ -3,6 +3,7 @@ from app.intents.order_handler import OrderHandler
 from app.intents.recommendation_handler import RecommendationHandler
 from app.intents.greeting_handler import GreetingHandler
 from app.intents.information_handler import InformationHandler
+from app.intents.cart_handler import CartHandler
 from app.intents.unknown_handler import UnknownHandler
 
 
@@ -13,16 +14,25 @@ INTENT_HANDLER_MAP = {
     "cheaper_product": ProductHandler,
     "costliest_product": ProductHandler,
     "product_category": ProductHandler,
+    "product_detail": ProductHandler,
+    "product_price": ProductHandler,
+    "product_stock": ProductHandler,
+    "product_compare": ProductHandler,
+    "product_alternatives": ProductHandler,
+    "product_advice": ProductHandler,
     "order": OrderHandler,
     "show_orders": OrderHandler,
     "track_order": OrderHandler,
     "recommendation": RecommendationHandler,
     "recommend_product": RecommendationHandler,
+    "add_to_cart": CartHandler,
+    "view_cart": CartHandler,
 
     # Conversation and assistant information
     "greeting": GreetingHandler,
     "assistant_identity": GreetingHandler,
     "assistant_about": GreetingHandler,
+    "clarification": GreetingHandler,
 
     # Public information capabilities
     "weather": InformationHandler,

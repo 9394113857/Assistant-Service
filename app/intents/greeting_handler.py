@@ -25,6 +25,12 @@ class GreetingHandler(BaseIntentHandler):
         if "who are you" in msg or "your name" in msg:
             return "I'm your AI Assistant 🤖, built to help with products, orders, recommendations, and general information."
 
+        if "simpler words" in msg or "simpler terms" in msg or "explain that" in msg:
+            return "Of course! Which part would you like me to explain more simply?"
+
+        if "something else" in msg or "start over" in msg:
+            return "Of course! What would you like to explore next?"
+
         if (
             msg in {"about", "#about", "help", "#help", "features"}
             or "what can you do" in msg

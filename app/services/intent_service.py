@@ -28,11 +28,11 @@ def detect_intent(message: str):
         r"^#?(?:about|help|features)$",
     )
     if any(re.search(pattern, msg) for pattern in about_patterns) or re.search(
-        r"\\bhelp me with something else\\b|\\bstart over\\b", msg
+        r"\bhelp me with something else\b|\bstart over\b", msg
     ):
         return "assistant_about", 0.98, "rule_v4"
 
-    if re.search(r"\\b(explain that|in simpler words|in simpler terms|simpler words)\\b", msg):
+    if re.search(r"\b(explain that|in simpler words|in simpler terms|simpler words)\b", msg):
         return "clarification", 0.90, "rule_v4"
 
     greeting_patterns = (

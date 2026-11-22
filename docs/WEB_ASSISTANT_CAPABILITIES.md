@@ -7,9 +7,13 @@
 Example:
 ```json
 {
-  "user_id": null,
   "message": "What is the weather in Hyderabad?"
 }
+
+For authenticated users, send the Auth-Service access token in the
+`Authorization: Bearer <access-token>` header. The API derives the user ID
+from the verified JWT; a `user_id` supplied in the request body is ignored.
+Requests without a token are treated as guest chat.
 ```
 
 The existing response contract remains:

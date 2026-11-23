@@ -538,23 +538,22 @@ def handle_order_request(user_id: int):
         if not orders:
             return "You have no orders."
 
-        result = "Your recent orders:\\n"
+        lines = ["Your recent orders:"]
         for order in orders[:5]:
             if not isinstance(order, dict):
                 continue
             order_id = order.get("order_id") or order.get("id")
             status = order.get("status", "unknown")
             if order_id is not None:
-                result += f"- Order #{order_id} | Status: {status}\\n"
+                lines.append(f"- Order #{order_id} | Status: {status}")
 
-        return result.rstrip() if result.strip() != "Your recent orders:" else "You have no orders."
+        return "\n".join(lines) if len(lines) > 1 else "You have no orders."
     except requests.Timeout:
         return "Order service took too long to respond. Please try again."
     except requests.RequestException:
         return "Order service is temporarily unavailable. Please try again later."
     except (ValueError, TypeError):
         return "Order service returned invalid order data."
-
 
 def handle_recommendation_request(user_id: int):
     try:

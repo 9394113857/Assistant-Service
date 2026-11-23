@@ -143,16 +143,6 @@ def detect_intent(message: str):
         return "product_category", 0.90, "rule_v4"
 
     if re.search(
-        r"\b(personalized|personalised|my recommendations|recommendations for me|"
-        r"based on my (orders|history|purchases))\b",
-        msg,
-    ):
-        return "recommend_product", 0.92, "rule_v4"
-
-    if re.search(r"\b(recommend|recommendation|suggest)\b", msg):
-        return "recommend_product", 0.90, "rule_v4"
-
-    if re.search(
         r"\b(product|products|catalog|catalogue|items|inventory|"
         r"what do you sell|what can i buy)\b",
         msg,

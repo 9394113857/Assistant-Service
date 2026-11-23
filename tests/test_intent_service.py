@@ -43,7 +43,9 @@ class IntentServiceTests(unittest.TestCase):
             "show laptops": "product_category",
             "do you have any smartphones": "product_category",
             "show me headphones": "product_category",
-            "i am looking for an affordable laptop for programming": "cheaper_product",
+            "i am looking for an affordable laptop for programming": "product_advice",
+            "i need a budget laptop": "cheaper_product",
+            "suggest good phones": "recommend_product",
             "show my orders": "show_orders",
             "track my order": "track_order",
             "recommend products for me": "recommend_product",
@@ -60,6 +62,32 @@ class IntentServiceTests(unittest.TestCase):
             "Show smartphones under ₹30,000": "cheaper_product",
             "Show laptops between ₹40,000 and ₹80,000": "cheaper_product",
             "Show phones above 20k": "cheaper_product",
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(detect_intent(message)[0], expected)
+
+    def test_product_advice_and_price_filtering_have_distinct_intents(self):
+        cases = {
+            "I need a laptop for programming": "product_advice",
+            "Find an affordable laptop for programming": "product_advice",
+            "Recommend a phone for gaming": "recommend_product",
+            "I need a budget laptop": "cheaper_product",
+            "Show laptops under ₹50,000": "cheaper_product",
+            "Find the cheapest smartphone": "cheaper_product",
+            "Suggest good phones": "recommend_product",
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(detect_intent(message)[0], expected)
+
+    def test_identity_about_and_weather_phrasing_are_recognized(self):
+        cases = {
+            "Who built you?": "assistant_identity",
+            "Tell me about your capabilities": "assistant_about",
+            "What services and features are available in this AI assistant?": "assistant_about",
+            "Is it hot in Hyderabad today?": "weather",
+            "Is it raining in Hyderabad?": "weather",
         }
         for message, expected in cases.items():
             with self.subTest(message=message):
@@ -83,6 +111,7 @@ class IntentServiceTests(unittest.TestCase):
             "Show me my cart items.": "view_cart",
             "How many items are in my cart?": "view_cart",
             "I need help choosing a suitable product.": "product_advice",
+            "I need a laptop for programming and office work.": "product_advice",
             "Can you explain the difference between these two products?": "product_compare",
         }
         for message, expected in cases.items():

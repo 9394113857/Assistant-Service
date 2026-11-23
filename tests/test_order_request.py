@@ -74,8 +74,9 @@ class OrderRequestTests(unittest.TestCase):
     def test_requires_authenticated_user_and_authorization_header(self):
         self.assertIn("login", tool_router.handle_order_request(None))
 
-        with self.app.test_request_context("/chat"):
-            self.assertIn("login", tool_router.handle_order_request(123))
+        with patch("app.services.tool_router.ORDER_SERVICE_URL", "https://orders.example.com"):
+            with self.app.test_request_context("/chat"):
+                self.assertIn("login", tool_router.handle_order_request(123))
 
 
 if __name__ == "__main__":

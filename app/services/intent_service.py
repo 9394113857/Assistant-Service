@@ -14,7 +14,7 @@ def detect_intent(message: str):
         return "unknown", 0.0, "rule_v4"
 
     if any(p in msg for p in (
-        "who made you", "who created you", "who developed you",
+        "who made you", "who built you", "who created you", "who developed you",
         "who are you", "your name"
     )):
         return "assistant_identity", 0.99, "rule_v4"
@@ -23,6 +23,8 @@ def detect_intent(message: str):
         r"\bwhat can you (?:do|help me with|help with)\b",
         r"\bhow can you help(?: me)?\b",
         r"\bwhat (?:services|features) do you offer\b",
+        r"\bwhat (?:services and features|capabilities) (?:are available|do you have)\b",
+        r"\btell me about your capabilities\b",
         r"\b(?:tell me about|information about) (?:your )?services\b",
         r"\bwhat do you offer\b",
         r"^#?(?:about|help|features)$",
@@ -71,11 +73,8 @@ def detect_intent(message: str):
     ):
         return "product_price", 0.92, "rule_v4"
 
-    if re.search(r"\b(help me choose|help choosing|choose a suitable|select a product)\b", msg):
-        return "product_advice", 0.90, "rule_v4"
-
     public_patterns = (
-        (r"\b(weather|temperature)\b", "weather"),
+        (r"\b(weather|temperature)\b|\b(is it|will it be) (?:hot|cold|raining|rainy|sunny|windy)\b", "weather"),
         (r"\b(wiki|wikipedia)\b", "wikipedia"),
         (r"\b(movie|film)\b", "movie"),
         (r"\b(book)\b", "book"),
@@ -103,6 +102,23 @@ def detect_intent(message: str):
     ):
         return "costliest_product", 0.94, "rule_v4"
 
+    # Explicit recommendation language wins over a bare product-category mention.
+    if re.search(
+        r"\b(personalized|personalised|my recommendations|recommendations for me|"
+        r"based on my (orders|history|purchases)|recommend|recommendation|suggest)\b",
+        msg,
+    ):
+        return "recommend_product", 0.92, "rule_v4"
+
+    # Advice is requirement-led product selection, not price-only filtering.
+    if re.search(
+        r"\b(help me choose|help choosing|choose a suitable|select a product|"
+        r"for programming|for office work|for gaming|for photography|for video editing|"
+        r"for graphic design|for students?|for daily use|for work)\b",
+        msg,
+    ):
+        return "product_advice", 0.90, "rule_v4"
+
     if re.search(
         r"\b(cheapest|cheaper|lowest[- ]priced|lowest price|least expensive)\b",
         msg,
@@ -125,16 +141,6 @@ def detect_intent(message: str):
     )
     if re.search(category_pattern, msg):
         return "product_category", 0.90, "rule_v4"
-
-    if re.search(
-        r"\b(personalized|personalised|my recommendations|recommendations for me|"
-        r"based on my (orders|history|purchases))\b",
-        msg,
-    ):
-        return "recommend_product", 0.92, "rule_v4"
-
-    if re.search(r"\b(recommend|recommendation|suggest)\b", msg):
-        return "recommend_product", 0.90, "rule_v4"
 
     if re.search(
         r"\b(product|products|catalog|catalogue|items|inventory|"

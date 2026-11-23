@@ -19,7 +19,7 @@ class GreetingHandler(BaseIntentHandler):
         if any(word in msg for word in ("hi", "hello", "hey", "hii", "heyy")):
             return f"{time_greeting}! 👋 How can I assist you today?"
 
-        if any(phrase in msg for phrase in ("who made you", "who created you", "who developed you")):
+        if any(phrase in msg for phrase in ("who made you", "who built you", "who created you", "who developed you")):
             return "I was created by Raghunadh Barlapudi. ❤️"
 
         if "who are you" in msg or "your name" in msg:
@@ -37,6 +37,9 @@ class GreetingHandler(BaseIntentHandler):
             or "what can you help" in msg
             or "how can you help" in msg
             or "what services do you offer" in msg
+            or "what services and features" in msg
+            or "tell me about your capabilities" in msg
+            or "what capabilities are available" in msg
             or "information about your services" in msg
             or "tell me about your services" in msg
             or "what do you offer" in msg

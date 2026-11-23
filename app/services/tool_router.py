@@ -488,31 +488,72 @@ def handle_product_request(message=""):
         return "Product service returned invalid product data."
 
 
+def _get_order_list_url():
+    """Build the current Cart & Order list endpoint from its configured service URL."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    if not ORDER_SERVICE_URL:
+        return None
+
+    parsed = urlsplit(ORDER_SERVICE_URL.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+
+    # Older deployments may have configured a legacy /api/v1/orders/list URL.
+    # The current Cart & Order API exposes the authenticated list at /api/orders/.
+    return urlunsplit((parsed.scheme, parsed.netloc, "/api/orders/", "", ""))
+
+
 def handle_order_request(user_id: int):
+    """Fetch the authenticated user's recent orders from Cart & Order Service."""
+    if user_id is None:
+        return "Please login to access your orders."
+
+    order_list_url = _get_order_list_url()
+    if not order_list_url:
+        return "Order service is not configured. Please check ORDER_SERVICE_URL."
+
+    token = request.headers.get("Authorization")
+    if not token:
+        return "Please login to access your orders."
+
     try:
-        token = request.headers.get("Authorization")
-        headers = {"Authorization": token} if token else {}
         response = requests.get(
-            f"{ORDER_SERVICE_URL}/{user_id}",
-            headers=headers,
+            order_list_url,
+            headers={"Authorization": token},
             timeout=PRODUCT_REQUEST_TIMEOUT,
         )
         if response.status_code == 401:
-            return "Please login to access your orders."
+            return "Your session has expired. Please login again."
+        if response.status_code == 403:
+            return "You are not authorized to access these orders."
         if response.status_code != 200:
-            return "Could not fetch orders."
-        orders = response.json()
+            return "Could not fetch orders. Please try again later."
+
+        payload = response.json()
+        if not isinstance(payload, dict) or not isinstance(payload.get("orders"), list):
+            return "Order service returned an unexpected response."
+
+        orders = payload["orders"]
         if not orders:
             return "You have no orders."
-        result = "Your recent orders:\n"
+
+        lines = ["Your recent orders:"]
         for order in orders[:5]:
+            if not isinstance(order, dict):
+                continue
             order_id = order.get("order_id") or order.get("id")
             status = order.get("status", "unknown")
-            result += f"- Order #{order_id} | Status: {status}\n"
-        return result
-    except Exception:
-        return "Order service unavailable."
+            if order_id is not None:
+                lines.append(f"- Order #{order_id} | Status: {status}")
 
+        return "\n".join(lines) if len(lines) > 1 else "You have no orders."
+    except requests.Timeout:
+        return "Order service took too long to respond. Please try again."
+    except requests.RequestException:
+        return "Order service is temporarily unavailable. Please try again later."
+    except (ValueError, TypeError):
+        return "Order service returned invalid order data."
 
 def handle_recommendation_request(user_id: int):
     try:

@@ -1,0 +1,193 @@
+name: "🔎 Manual - Alembic Migration Overview"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-service-alembic-overview
+  cancel-in-progress: false
+
+jobs:
+  alembic-overview:
+    name: "Read Alembic Current Revision and Heads"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: "📥 Checkout Selected Branch"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "📦 Install PostgreSQL Driver"
+        run: python -m pip install "psycopg[binary]==3.3.9"
+
+      - name: "🔐 Validate Database Secret"
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::GitHub Actions secret DATABASE_URL is missing."
+            exit 1
+          fi
+          echo "DATABASE_URL is configured. Secret value will not be displayed."
+
+      - name: "🔎 Alembic Overview - Current, Heads and Revision List"
+        run: |
+          python <<'PY'
+          import ast
+          import os
+          import sys
+          from pathlib import Path
+
+          import psycopg
+
+          # Read-only: fetch the revision(s) currently recorded by Alembic.
+          try:
+              with psycopg.connect(
+                  os.environ["DATABASE_URL"],
+                  connect_timeout=15,
+                  autocommit=True,
+              ) as connection:
+                  with connection.cursor() as cursor:
+                      cursor.execute(
+                          "SELECT version_num FROM alembic_version ORDER BY version_num"
+                      )
+                      database_revisions = [row[0] for row in cursor.fetchall()]
+          except Exception as exc:
+              print(f"::error::Could not read Alembic version: {type(exc).__name__}: {exc}")
+              sys.exit(1)
+
+          # Read revision metadata from the selected branch without importing app code.
+          migration_dir = Path("migrations/versions")
+          migrations = []
+          for path in sorted(migration_dir.glob("*.py")):
+              try:
+                  tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+              except (SyntaxError, UnicodeDecodeError) as exc:
+                  print(f"::warning::Could not parse {path.name}: {exc}")
+                  continue
+
+              values = {}
+              for node in tree.body:
+                  if isinstance(node, ast.Assign):
+                      for target in node.targets:
+                          if isinstance(target, ast.Name) and target.id in {"revision", "down_revision"}:
+                              try:
+                                  values[target.id] = ast.literal_eval(node.value)
+                              except (ValueError, TypeError):
+                                  pass
+                  elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                      if node.target.id in {"revision", "down_revision"} and node.value is not None:
+                          try:
+                              values[node.target.id] = ast.literal_eval(node.value)
+                          except (ValueError, TypeError):
+                              pass
+
+              revision = values.get("revision")
+              if not isinstance(revision, str):
+                  continue
+              parent_value = values.get("down_revision")
+              if parent_value is None:
+                  parents = []
+              elif isinstance(parent_value, str):
+                  parents = [parent_value]
+              elif isinstance(parent_value, (tuple, list)):
+                  parents = [item for item in parent_value if isinstance(item, str)]
+              else:
+                  parents = []
+              migrations.append({
+                  "revision": revision,
+                  "parents": parents,
+                  "file": path.name,
+              })
+
+          known_revisions = {item["revision"] for item in migrations}
+          referenced_parents = {
+              parent
+              for item in migrations
+              for parent in item["parents"]
+              if parent in known_revisions
+          }
+          heads = sorted(known_revisions - referenced_parents)
+          missing_parents = sorted({
+              parent
+              for item in migrations
+              for parent in item["parents"]
+              if parent not in known_revisions
+          })
+
+          parents_by_revision = {
+              item["revision"]: item["parents"] for item in migrations
+          }
+          applied_revisions = set()
+          for database_revision in database_revisions:
+              pending = [database_revision]
+              while pending:
+                  revision = pending.pop()
+                  if revision in applied_revisions:
+                      continue
+                  applied_revisions.add(revision)
+                  pending.extend(parents_by_revision.get(revision, []))
+
+          print()
+          print("=" * 88)
+          print("ASSISTANT-SERVICE | ALEMBIC MIGRATION OVERVIEW")
+          print("=" * 88)
+          print(f"Database current revision(s): {', '.join(database_revisions) if database_revisions else 'NONE'}")
+          print(f"Repository migration count:   {len(migrations)}")
+          print(f"Repository head count:        {len(heads)}")
+          print(f"Repository head(s):           {', '.join(heads) if heads else 'NONE'}")
+          print("-" * 88)
+          print(f"{'S.NO':<6} {'REVISION':<18} {'DOWN REVISION':<30} {'DB STATUS':<12}")
+          print("-" * 88)
+
+          for index, item in enumerate(migrations, start=1):
+              revision = item["revision"]
+              parent_text = ", ".join(item["parents"]) if item["parents"] else "BASE"
+              if revision in database_revisions:
+                  status = "CURRENT"
+              elif revision in applied_revisions:
+                  status = "APPLIED"
+              else:
+                  status = "PENDING"
+              print(f"{index:<6} {revision:<18} {parent_text:<30} {status:<12}")
+
+          print("-" * 88)
+          if len(heads) == 1:
+              print(f"HEAD CHECK: PASS - single head: {heads[0]}")
+          else:
+              print(f"HEAD CHECK: WARNING - {len(heads)} heads found: {', '.join(heads) or 'NONE'}")
+
+          if missing_parents:
+              print("REVISION CHECK: WARNING - parent revision(s) missing from this checkout:")
+              for parent in missing_parents:
+                  print(f"  - {parent}")
+          else:
+              print("REVISION CHECK: PASS - all referenced parent revisions are present.")
+
+          unknown_database_revisions = sorted(set(database_revisions) - known_revisions)
+          if unknown_database_revisions:
+              print("DATABASE CHECK: WARNING - current database revision not found in this branch:")
+              for revision in unknown_database_revisions:
+                  print(f"  - {revision}")
+          elif database_revisions:
+              print("DATABASE CHECK: PASS - database revision(s) found in this branch.")
+          else:
+              print("DATABASE CHECK: WARNING - alembic_version has no revision rows.")
+
+          print("=" * 88)
+          print("READ-ONLY CHECK: No migrations or schema changes were executed.")
+          PY
+
+      - name: "✅ Alembic Overview Completed"
+        run: echo "Alembic overview completed (read-only)."

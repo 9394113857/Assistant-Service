@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   database-backup:
-    name: "Create Supabase SQL Backup"
+    name: "Create and Encrypt Supabase SQL Backup"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -26,10 +26,11 @@ jobs:
       # Reuses the existing secret used by the read-only Alembic overview.
       # The secret value is never printed by this workflow.
       SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
       CONFIRM_PRODUCTION_BACKUP: ${{ inputs.confirm_production_backup }}
 
     steps:
-      - name: "🛑 Validate Branch, Confirmation and Secret"
+      - name: "🛑 Validate Branch, Confirmation and Secrets"
         shell: bash
         run: |
           set -euo pipefail
@@ -49,8 +50,13 @@ jobs:
             exit 1
           fi
 
+          if [[ -z "$BACKUP_ENCRYPTION_PASSPHRASE" || ${#BACKUP_ENCRYPTION_PASSPHRASE} -lt 32 ]]; then
+            echo "::error::Add BACKUP_ENCRYPTION_PASSPHRASE as a GitHub Actions secret with at least 32 characters."
+            exit 1
+          fi
+
           echo "Branch and manual confirmation validated."
-          echo "DATABASE_URL secret is configured; its value will not be displayed."
+          echo "Required secrets are configured; secret values will not be displayed."
 
       - name: "📥 Checkout Selected Feature Branch"
         uses: actions/checkout@v4
@@ -67,7 +73,7 @@ jobs:
         with:
           version: latest
 
-      - name: "🔎 Display Backup Target Safely"
+      - name: "🔎 Validate Database Target Safely"
         shell: bash
         run: |
           set -euo pipefail
@@ -127,46 +133,86 @@ jobs:
             echo "Branch: $GITHUB_REF_NAME"
             echo "Commit: $GITHUB_SHA"
             echo
-            echo "Files: roles.sql, schema.sql, data.sql"
+            echo "Files inside encrypted archive: roles.sql, schema.sql, data.sql"
             echo "Scope: Supabase CLI logical dump of supported database roles, schema and table data."
             echo "This is not a complete Supabase platform backup."
             echo "Supabase-managed schemas (including auth and storage), storage objects, Edge Functions, project secrets and PITR are not included."
             echo "Restore has not been tested by this workflow."
           } > backup-manifest.txt
 
-          echo "Backup files created and verified (file names and sizes only):"
+          echo "Backup SQL files created and verified (file names and sizes only):"
           ls -lh roles.sql schema.sql data.sql backup-manifest.txt
 
+      - name: "🔐 Encrypt Backup Before Artifact Upload"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive="assistant-service-supabase-backup.tar.gz"
+          encrypted="assistant-service-supabase-backup.tar.gz.gpg"
+
+          tar -czf "$archive" roles.sql schema.sql data.sql backup-manifest.txt
+
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 \
+            --output "$encrypted" "$archive"
+
+          if [[ ! -s "$encrypted" ]]; then
+            echo "::error::Encrypted backup file was not created."
+            exit 1
+          fi
+
+          # Verify that the encrypted archive can be decrypted and listed.
+          gpg --batch --quiet --pinentry-mode loopback \
+            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
+            --decrypt "$encrypted" | tar -tzf - >/dev/null
+
+          sha256sum "$encrypted" > "$encrypted.sha256"
+
+          # Remove plaintext SQL and the unencrypted archive before upload.
+          rm -f roles.sql schema.sql data.sql "$archive"
+
+          if [[ -e roles.sql || -e schema.sql || -e data.sql || -e "$archive" ]]; then
+            echo "::error::Plaintext backup files remain in the workspace."
+            exit 1
+          fi
+
+          echo "Encrypted archive created and decryption verification passed."
+          ls -lh "$encrypted" "$encrypted.sha256" backup-manifest.txt
+
           {
-            echo "## Supabase backup files verified"
+            echo "## Supabase backup encrypted and verified"
             echo
             echo "| File | Size |"
             echo "|---|---:|"
-            for file in roles.sql schema.sql data.sql backup-manifest.txt; do
+            for file in "$encrypted" "$encrypted.sha256" backup-manifest.txt; do
               size=$(du -h "$file" | cut -f1)
               echo "| `$file` | $size |"
             done
             echo
-            echo "**Important:** This is a logical dump, not a complete Supabase platform backup. It excludes Supabase-managed schemas such as Auth and Storage, storage objects, Edge Functions, project secrets and PITR. Restore has not been tested."
+            echo "**Security:** Only the AES-256 encrypted archive is uploaded with its checksum. Plaintext SQL files are removed before upload."
+            echo
+            echo "**Scope limitation:** This is a logical dump, not a complete Supabase platform backup. It excludes Supabase-managed schemas such as Auth and Storage, storage objects, Edge Functions, project secrets and PITR. Restore has not been tested."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: "📦 Upload Private-Repository Workflow Artifact"
+      - name: "📦 Upload Encrypted Workflow Artifact"
         uses: actions/upload-artifact@v4
         with:
           name: assistant-service-supabase-backup-${{ github.run_id }}
           path: |
-            roles.sql
-            schema.sql
-            data.sql
+            assistant-service-supabase-backup.tar.gz.gpg
+            assistant-service-supabase-backup.tar.gz.gpg.sha256
             backup-manifest.txt
           if-no-files-found: error
           retention-days: 7
-          compression-level: 6
+          compression-level: 0
 
-      - name: "🎉 Backup Artifact Uploaded"
+      - name: "🎉 Encrypted Backup Artifact Uploaded"
         if: success()
         run: |
-          echo "Backup artifact uploaded successfully."
+          echo "Encrypted backup artifact uploaded successfully."
           echo "Download it from this workflow run's Artifacts section."
-          echo "No SQL files were committed to the repository."
+          echo "The encryption passphrase is required to decrypt it."
+          echo "No plaintext SQL files were committed or uploaded."
           echo "No database schema or data was modified."

@@ -1487,5 +1487,130 @@ Share that output next, bro.
 
 **Then we can start preparing the actual ML training dataset.** No code changes or deployment yet. One step at a time. 💪
 
+==================================================================
+
+Brooooo! ❤️ Today we made good progress. Let's close today's work with a proper project report, so tomorrow morning we can start directly without repeating anything.
+
+# **Assistant-Service ML Pipeline — Daily Progress Report**
+
+Analysis completed
+
+Training not started
+
+25 November 2026
+
+## **1. What we completed today**
+
+| Area                | Today's progress                                                         |
+| ------------------- | ------------------------------------------------------------------------ |
+| Render logs         | Checked recent logs; HTTP 200 responses, no errors in the shared excerpt |
+| Supabase database   | Inspected sessions, messages and training logs                           |
+| User categories     | Reviewed guest and authenticated test conversations                      |
+| Existing classifier | Inspected `rule_v4` implementation                                       |
+| Training analytics  | Analysed 210 reviewed records                                            |
+| Prediction errors   | Examined 63 historical mismatches                                        |
+| Current baseline    | Checked for reviewed `rule_v4` mismatches                                |
+
+## **2. What we discovered**
+
+**A. Existing classifier performance**
+
+# **70%**
+
+**Historical reviewed prediction agreement**
+
+147 correct out of 210 reviewed records across the historical dataset.
+
+Important: This is not the measured accuracy of `rule_v4`. The records include multiple model versions.
+
+**B. Main classification problems**
+
+- Cart operations: `add_to_cart`, `view_cart`
+- Order operations: `track_order`, `show_orders`
+- Product understanding: `product_advice`, `product_category`, `cheaper_product`
+- Assistant questions: `assistant_about`, `assistant_identity`
+- Public information: `weather`, `general_knowledge`
+
+**C. Current&#x20;**`rule_v4`**&#x20;finding**
+
+Our latest mismatch query returned:
+
+`Success. No rows returned`
+
+This means there are currently no reviewed records in the table where `model_version = 'rule_v4'` and `actual_intent <> predicted_intent`.
+
+It does **not** mean `rule_v4` has 100% accuracy. We still need to establish how many `rule_v4` records have been reviewed and whether the new controlled test messages have actual labels.
+
+## **3. Tomorrow morning — our starting roadmap**
+
+Tomorrow's first task
+
+1. **Step 1 — Verify the rule_v4 baseline**
+
+   Count reviewed and pending records specifically for `rule_v4`. Establish its actual accuracy.
+2. **Step 2 — Prepare clean training data**
+
+   Combine reviewed messages, actual intent labels and useful metadata. Identify duplicates and conflicting labels.
+3. **Step 3 — Explore and preprocess**
+
+   Text cleaning, label distribution, train/test split and feature preparation.
+4. **Step 4 — Train the first ML model**
+
+   Start with TF-IDF and Logistic Regression as our first baseline model.
+5. **Step 5 — Evaluate**
+
+   Compare accuracy, precision, recall, F1-score and confusion matrix against `rule_v4`.
+6. **Step 6 — Integration later**
+
+   Once results are satisfactory, plan integration into Assistant-Service `main`. No deployment until we approve it.
+
+## **4. Tomorrow's first SQL query**
+
+Let's start with this exact query. It will tell us how much reviewed training data we have for each classifier version.
+
+```
+SELECT
+    model_version,
+    COUNT(*) AS total_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NULL
+    ) AS pending_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = predicted_intent
+    ) AS correct_predictions,
+    COUNT(*) FILTER (
+        WHERE actual_intent <> predicted_intent
+    ) AS incorrect_predictions
+FROM assistant_training_logs
+GROUP BY model_version
+ORDER BY model_version;
+```
+
+Save this as our first task for tomorrow.
+
+## **5. Our target architecture**
+
+**Supabase conversation data**
+
+Real messages + reviewed intent labels
+
+**ML Pipeline**
+
+Clean → Prepare → Train → Evaluate
+
+**New Intent Classifier**
+
+First model: TF-IDF + Logistic Regression
+
+**Assistant-Service**
+
+Integrate only after validation
+
+**One important principle:** Our classifier will understand what the user wants. The existing handlers will execute the action. We'll improve these two parts independently.
+
+Bro, tomorrow we don't need to rush. First SQL query, then dataset preparation, then our first ML model. Small steps, real progress. ❤️
 
 

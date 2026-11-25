@@ -460,5 +460,58 @@ I have added the tests but haven't executed them in a test runtime. Both `main` 
 
 **Next, let's verify the migration and backend tests before deploying anything, bro.** ❤️
 
+==================================================================
+
+Let's go slowly, boss 😄
+
+**Step 1: Read-only verification — no code changes.**
+
+First, I want to check the Angular side carefully: compare the original chat component and service on `main` with our feature branch, and verify which storage key the login service actually uses for its JWT. This will help us catch any accidental changes before we touch anything else.
+
+I found one important detail, bro:
+
+- The chat component’s product formatting, related products, copy-message, and copy-conversation features are preserved in the feature branch.
+- The old component used a demo `userLoggedIn` flag and hard-coded `userId = 1`. The new version removes that demo identity and lets the backend identify logged-in users from the JWT. That is intentional in principle, but we must verify the actual Auth-Service token key before trusting it.
+- The original service read `access_token`; our feature service reads `token`. **That difference needs verification** before we consider the frontend safe.
+
+No files have been changed during this check.
+
+JWT key confirmed
+
+Good news: the login component saves the access JWT as `localStorage['token']`, and the HTTP interceptor also reads that same key. So our feature branch’s `token` lookup matches the actual login flow. The old Assistant Service’s `access_token` lookup did not match the login component.
+
+Next, I’m checking the backend changes against the original code — especially whether the rewritten chat flow preserved the existing intent handling and response behavior.
+
+**Backend review: the guest-isolation logic looks consistent, but I found one migration issue.**
+
+The important parts look right:
+
+- Guest A gets a new session token.
+- Guest B gets a different token and session.
+- The database stores the token hash, not the original token.
+- A guest cannot use an unknown token to retrieve another session.
+- Logged-in users continue to be identified through the verified JWT.
+- Existing intent detection, follow-up resolution, handlers, and training-log flow are largely preserved.
+
+Migration needs attention
+
+There are currently two migration files with the same parent revision:
+
+| Migration                                     | Parent         |
+| --------------------------------------------- | -------------- |
+| `7c1f4a9b2d30` — training review audit fields | `13518dd95fc3` |
+| `7c2f91a4d6b8` — guest token hash             | `13518dd95fc3` |
+
+That creates two Alembic migration heads. We should resolve that before attempting a database upgrade.
+
+**Our progress so far**
+
+1. Frontend JWT storage key — verified.
+2. Frontend component behavior — reviewed.
+3. Backend guest-session logic — reviewed.
+4. Migration chain — issue identified.
+5. Tests and deployment — not verified; nothing deployed.
+
+**Next small step:** I recommend correcting the migration chain so the guest-token migration follows the training-review migration, then checking the complete migration history. We won't run any database migration or deployment yet.
 
 

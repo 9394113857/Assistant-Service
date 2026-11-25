@@ -628,4 +628,114 @@ I have not changed any files or touched the database.
 
 Shall I correct that one documentation line and commit it to the feature branch?
 
+==================================================================
+
+Bro, I created the workflow and committed it, but I caught one important security issue during verification: **your Assistant-Service GitHub repository is public.**
+
+Database exports can contain customer information and other sensitive records. So I am adding encryption before uploading the backup artifact. We will not upload plaintext SQL files to a public repository.
+
+Committed to feature branch
+
+### **1. GitHub commits**
+
+Repository: `9394113857/Assistant-Service`
+
+| Commit     | Description                                   |
+| ---------- | --------------------------------------------- |
+| `75aba151` | Add manual Supabase backup workflow           |
+| `4951a2ba` | Encrypt backup artifact for public repository |
+
+**Workflow file:**\
+
+
+[manual-supabase-backup.yml](https://github.com/9394113857/Assistant-Service/blob/feature/guest-session-isolation/.github/workflows/manual-supabase-backup.yml?utm_source=chatgpt.com)
+
+### **2. One-time setup — encryption secret**
+
+We need one additional GitHub secret.
+
+First, generate a secure passphrase in PowerShell:
+
+```
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+
+$backupPassphrase = [Convert]::ToBase64String($bytes)
+Set-Clipboard -Value $backupPassphrase
+
+$rng.Dispose()
+Write-Host "Secure passphrase generated and copied."
+```
+
+Now open:
+
+[GitHub Actions Secrets](https://github.com/9394113857/Assistant-Service/settings/secrets/actions?utm_source=chatgpt.com)
+
+Create this repository secret:
+
+| Field  | Value                          |
+| ------ | ------------------------------ |
+| Name   | `BACKUP_ENCRYPTION_PASSPHRASE` |
+| Secret | Paste the copied passphrase    |
+
+Keep this passphrase safe. You'll need it to decrypt your backup later.
+
+The workflow already uses your existing `DATABASE_URL` secret. Supabase recommends using a Session Pooler connection for GitHub-hosted runners when direct IPv6 connectivity isn't available.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://supabase.com\&sz=32)
+
+Supabase Docs+1
+
+
+
+### **3. How to run the backup**
+
+After adding the secret:
+
+## **Manual Supabase Backup**
+
+1. Open the repository's [GitHub Actions](https://github.com/9394113857/Assistant-Service/actions?utm_source=chatgpt.com) tab.
+2. Select **🛡️ Manual - Supabase Database Backup**.
+3. Click **Run workflow**.
+4. Select branch `feature/guest-session-isolation`.
+5. Enter `BACKUP` in the confirmation field.
+6. Click **Run workflow** again.
+
+This workflow is manual-only and restricted to the feature branch.
+
+### **4. What you will receive**
+
+**Encrypted backup artifact**
+
+AES-256
+
+- `roles.sql` — custom database roles
+- `schema.sql` — database schema
+- `data.sql` — table data
+- `backup-manifest.txt` — backup details
+
+These SQL files are packaged and encrypted before upload. Only the encrypted archive and checksum are uploaded as a seven-day GitHub Actions artifact.
+
+**Important limitations:** Supabase's logical dump excludes managed schemas such as Auth and Storage, storage objects, Edge Functions and project secrets. It is not a complete platform backup, and this workflow does not yet test restoration.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://supabase.com\&sz=32)
+
+Supabase Docs+1
+
+
+
+### **Our next milestone**
+
+- Create workflow
+- Commit workflow
+- Protect backup with encryption
+- Add encryption secret
+- Run backup manually
+- Download and verify backup
+- Plan migration
+
+**Do the one-time GitHub secret setup first, bro.** Tell me when it's added, and we'll run the backup together. No migration or deployment yet. ❤️
+
+
 

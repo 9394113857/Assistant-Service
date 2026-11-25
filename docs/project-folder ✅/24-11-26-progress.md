@@ -340,6 +340,68 @@ Database investigation completed
 
 Bro, we're making progress. One small improvement at a time! 🚀
 
+==================================================================
+
+Perfect bro! ❤️ We'll fix **guest session isolation first**, before touching cart integration.
+
+We'll go slowly, one step at a time. The goal is simple: **Guest A and Guest B must have completely separate chat histories.**
+
+I’ll first check how the Angular frontend sends chat requests so we can design the backend and frontend changes together. No code edits, database migrations, commits, or deployments yet.
+
+## **Step 1 — Frontend inspection completed**
+
+I found the Angular repository connected to your production Assistant Service:
+
+- Frontend: [Angular-Ecommerce](https://github.com/9394113857/Angular-Ecommerce?utm_source=chatgpt.com)
+- Backend: [Assistant-Service](https://github.com/9394113857/Assistant-Service?utm_source=chatgpt.com)
+
+I inspected these two frontend files:
+
+- [assistant.service.ts](https://github.com/9394113857/Angular-Ecommerce/blob/main/src/app/assistant/services/assistant.service.ts?utm_source=chatgpt.com)
+- [chat-widget.component.ts](https://github.com/9394113857/Angular-Ecommerce/blob/main/src/app/assistant/chat-widget/chat-widget.component.ts?utm_source=chatgpt.com)
+
+**What I found:**
+
+1. Angular sends the message to the backend.
+2. It attaches an access token when one exists.
+3. Guest users send no guest-specific session identifier.
+4. The component maintains messages in its local array, but doesn't send a conversation identifier to the backend.
+
+So both sides need a small change.
+
+## **Step 2 — Proposed solution**
+
+**Guest A**
+
+Token A
+
+Unique guest identifier
+
+Chat Session A → Messages A1, A2, A3
+
+**Guest B**
+
+Token B
+
+Different guest identifier
+
+Chat Session B → Messages B1, B2, B3
+
+We'll implement:
+
+1. Add a guest identifier to the backend chat-session model.
+2. Generate a secure, unique guest token.
+3. Return that token from the chat API.
+4. Store it in Angular and send it with subsequent messages.
+5. Ensure the backend retrieves only the matching guest session.
+6. Keep authenticated users' sessions separate using their verified JWT identity.
+
+**One important decision before implementation:**
+
+I recommend `sessionStorage` for guest tokens. It survives page refreshes but gives a new browser tab its own guest session.
+
+Does that behavior suit you, bro?
+
 
 
 

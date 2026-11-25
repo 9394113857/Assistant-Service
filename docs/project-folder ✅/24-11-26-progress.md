@@ -1221,4 +1221,97 @@ That's the foundation for training our new model in `Assistant-Service ML Pipeli
 
 Pasted text(6).txt
 
+==================================================================
+
+Brooooo! 🔥 Now we have connected all three datasets:
+
+1. Real user messages.
+2. Actual assistant responses.
+3. `rule_v4` predicted intents and confidence scores.
+
+This is a very useful baseline for our new ML model.
+
+## **1. Dataset summary**
+
+# **48**
+
+**User messages**
+
+23 guest + 25 authenticated
+
+# **48**
+
+**Intent predictions**
+
+All recorded as rule_v4
+
+# **48**
+
+**Unreviewed labels**
+
+actual_intent is NULL
+
+# **0**
+
+**Verified accuracy**
+
+Not yet established for this test batch
+
+## **2. Important classifier findings**
+
+These are the messages I would prioritize for improvement.
+
+| User message                                     | Current prediction | Expected intent to review | Finding                                        |
+| ------------------------------------------------ | ------------------ | ------------------------- | ---------------------------------------------- |
+| Who developed this assistant?                    | unknown            | assistant_identity        | Identity phrase gap                            |
+| What features can I use in this chatbot?         | unknown            | assistant_about           | Capability phrase gap                          |
+| Please explain your previous answer more clearly | unknown            | clarification             | Clarification phrase gap                       |
+| Display my previous purchase history             | unknown            | show_orders               | Purchase-history phrase gap                    |
+| Where is my order right now?                     | show_orders        | track_order               | Tracking distinction                           |
+| Cancel my latest eligible order                  | show_orders        | order                     | Cancellation distinction                       |
+| Is it raining in Hyderabad today?                | weather            | weather                   | Classification works, response retrieval fails |
+| Explain how artificial intelligence works        | unknown            | general_knowledge         | General knowledge coverage gap                 |
+
+These expected labels are proposed for human review, not verified ground truth.
+
+## **3. One critical distinction**
+
+We have found two types of problems:
+
+- **Classification problem:** The assistant doesn't understand the message correctly.
+- **Execution problem:** It understands the intent but cannot complete the requested action.
+
+For example:
+
+- `Is it raining in Hyderabad today?` → correctly classified as `weather`, but weather retrieval failed.
+- `Add two units of the first laptop to my cart` → correctly classified as `add_to_cart`, but cart actions are not connected.
+
+A new intent model should improve the first problem. The second requires improving the chatbot integrations.
+
+## **4. What I recommend next**
+
+Before training, let's inspect the existing 214 training records again, specifically their reviewed labels and message distribution. We need to avoid training on unreviewed or artificially generated test messages as though they were verified customer data.
+
+**Next Supabase query — check which intents are already reviewed and available for training:**
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT user_message) AS unique_messages,
+    COUNT(*) FILTER (
+        WHERE actual_intent = predicted_intent
+    ) AS correct_predictions,
+    COUNT(*) FILTER (
+        WHERE actual_intent <> predicted_intent
+    ) AS incorrect_predictions
+FROM assistant_training_logs
+WHERE actual_intent IS NOT NULL
+GROUP BY actual_intent
+ORDER BY reviewed_records DESC;
+```
+
+Share this result next, bro.
+
+Then we can establish the actual training dataset for all existing intents and decide which classifier to train in **Assistant-Service ML Pipeline**. No code or database changes yet. ❤️
 

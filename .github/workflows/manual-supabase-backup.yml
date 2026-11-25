@@ -1,0 +1,172 @@
+name: "🛡️ Manual - Supabase Database Backup"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_backup:
+        description: 'Type BACKUP to confirm that you want to export the production database.'
+        required: true
+        type: string
+        default: "NO"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-service-supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  database-backup:
+    name: "Create Supabase SQL Backup"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Reuses the existing secret used by the read-only Alembic overview.
+      # The secret value is never printed by this workflow.
+      SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+      CONFIRM_PRODUCTION_BACKUP: ${{ inputs.confirm_production_backup }}
+
+    steps:
+      - name: "🛑 Validate Branch, Confirmation and Secret"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/feature/guest-session-isolation" ]]; then
+            echo "::error::Run this workflow from feature/guest-session-isolation only."
+            exit 1
+          fi
+
+          if [[ "$CONFIRM_PRODUCTION_BACKUP" != "BACKUP" ]]; then
+            echo "::error::Confirmation missing. Enter BACKUP in the workflow input to continue."
+            exit 1
+          fi
+
+          if [[ -z "$SUPABASE_DB_URL" ]]; then
+            echo "::error::GitHub Actions secret DATABASE_URL is missing."
+            exit 1
+          fi
+
+          echo "Branch and manual confirmation validated."
+          echo "DATABASE_URL secret is configured; its value will not be displayed."
+
+      - name: "📥 Checkout Selected Feature Branch"
+        uses: actions/checkout@v4
+
+      - name: "🐳 Verify Docker Availability"
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          echo "Docker daemon is available on the GitHub-hosted runner."
+
+      - name: "🧰 Install Supabase CLI"
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: "🔎 Display Backup Target Safely"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+
+          value = os.environ["SUPABASE_DB_URL"]
+          parsed = urlparse(value)
+          if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
+              raise SystemExit("::error::DATABASE_URL is not a valid PostgreSQL connection URL.")
+          print("Database connection URL format: valid")
+          print(f"Database host: {parsed.hostname}")
+          print("Credentials and full connection URL: hidden")
+          PY
+
+      - name: "💾 Backup Custom Roles"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump --remote="$SUPABASE_DB_URL" -f roles.sql --role-only
+
+      - name: "💾 Backup Database Schema"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump --remote="$SUPABASE_DB_URL" -f schema.sql
+
+      - name: "💾 Backup Table Data"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump \
+            --remote="$SUPABASE_DB_URL" \
+            -f data.sql \
+            --data-only \
+            --use-copy \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes"
+
+      - name: "✅ Verify Backup Files and Create Manifest"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in roles.sql schema.sql data.sql; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error::Backup file is missing or empty: $file"
+              exit 1
+            fi
+          done
+
+          {
+            echo "Assistant-Service Supabase logical database backup"
+            echo "Created UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Repository: $GITHUB_REPOSITORY"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            echo "Files: roles.sql, schema.sql, data.sql"
+            echo "Scope: Supabase CLI logical dump of supported database roles, schema and table data."
+            echo "This is not a complete Supabase platform backup."
+            echo "Supabase-managed schemas (including auth and storage), storage objects, Edge Functions, project secrets and PITR are not included."
+            echo "Restore has not been tested by this workflow."
+          } > backup-manifest.txt
+
+          echo "Backup files created and verified (file names and sizes only):"
+          ls -lh roles.sql schema.sql data.sql backup-manifest.txt
+
+          {
+            echo "## Supabase backup files verified"
+            echo
+            echo "| File | Size |"
+            echo "|---|---:|"
+            for file in roles.sql schema.sql data.sql backup-manifest.txt; do
+              size=$(du -h "$file" | cut -f1)
+              echo "| `$file` | $size |"
+            done
+            echo
+            echo "**Important:** This is a logical dump, not a complete Supabase platform backup. It excludes Supabase-managed schemas such as Auth and Storage, storage objects, Edge Functions, project secrets and PITR. Restore has not been tested."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "📦 Upload Private-Repository Workflow Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: assistant-service-supabase-backup-${{ github.run_id }}
+          path: |
+            roles.sql
+            schema.sql
+            data.sql
+            backup-manifest.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
+      - name: "🎉 Backup Artifact Uploaded"
+        if: success()
+        run: |
+          echo "Backup artifact uploaded successfully."
+          echo "Download it from this workflow run's Artifacts section."
+          echo "No SQL files were committed to the repository."
+          echo "No database schema or data was modified."

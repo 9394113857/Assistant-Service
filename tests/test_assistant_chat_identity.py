@@ -22,6 +22,7 @@ class AssistantChatIdentityTests(unittest.TestCase):
             "intent": "greeting",
             "confidence": 0.96,
             "model_version": "rule_v4",
+            "guest_session_token": "server-issued-token",
         }
 
         response = self.client.post(
@@ -30,7 +31,12 @@ class AssistantChatIdentityTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        process_message.assert_called_once_with(None, "Hello")
+        self.assertEqual(response.get_json()["guest_session_token"], "server-issued-token")
+        process_message.assert_called_once_with(
+            None,
+            "Hello",
+            guest_session_token=None,
+        )
 
     @patch("app.routes.assistant_routes.process_user_message")
     def test_authenticated_request_uses_jwt_identity_not_body_user_id(self, process_message):
@@ -43,12 +49,21 @@ class AssistantChatIdentityTests(unittest.TestCase):
 
         response = self.client.post(
             "/api/v1/assistant/chat",
-            json={"user_id": 9876, "message": "Show my orders"},
+            json={
+                "user_id": 9876,
+                "message": "Show my orders",
+                "guest_session_token": "guest-token-must-be-ignored",
+            },
             headers=self.headers("123"),
         )
 
         self.assertEqual(response.status_code, 200)
-        process_message.assert_called_once_with(123, "Show my orders")
+        self.assertNotIn("guest_session_token", response.get_json())
+        process_message.assert_called_once_with(
+            123,
+            "Show my orders",
+            guest_session_token=None,
+        )
 
     def test_authenticated_request_rejects_non_numeric_jwt_identity(self):
         response = self.client.post(
@@ -72,6 +87,14 @@ class AssistantChatIdentityTests(unittest.TestCase):
         response = self.client.post(
             "/api/v1/assistant/chat",
             json={"message": "   "},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_guest_token_must_be_a_non_empty_string(self):
+        response = self.client.post(
+            "/api/v1/assistant/chat",
+            json={"message": "Hello", "guest_session_token": " "},
         )
 
         self.assertEqual(response.status_code, 400)

@@ -1,7 +1,7 @@
 """add guest token hash to chat sessions
 
 Revision ID: 7c2f91a4d6b8
-Revises: 13518dd95fc3
+Revises: 7c1f4a9b2d30
 Create Date: 2026-11-25
 """
 from alembic import op

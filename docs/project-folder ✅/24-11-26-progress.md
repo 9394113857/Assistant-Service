@@ -402,7 +402,63 @@ I recommend `sessionStorage` for guest tokens. It survives page refreshes but gi
 
 Does that behavior suit you, bro?
 
+==================================================================
 
+Absolutely bro! ❤️ I'll make the changes in **both repositories** and commit them on separate feature branches, keeping `main` untouched.
+
+I'll preserve authenticated-user session handling and make sure guest tokens cannot access another user's chat history. I'll also include tests for guest-session isolation.
+
+The core changes are now committed on both feature branches. One important detail I caught during implementation: the new database migration is chained after the latest existing migration, not an older revision, so it won't create a competing migration head.
+
+The backend now issues an opaque guest token, stores only its SHA-256 hash, and rejects unknown tokens instead of silently attaching them to another guest's history.
+
+Committed on both repositories
+
+## **1. Backend — Assistant-Service**
+
+[Open backend feature branch](https://github.com/9394113857/Assistant-Service/tree/feature/guest-session-isolation?utm_source=chatgpt.com)
+
+Changes:
+
+- Added `guest_token_hash` to `ChatSession`.
+- Added secure guest token generation.
+- Stores only the SHA-256 hash in PostgreSQL.
+- Retrieves guest conversations using their unique tokens.
+- Rejects invalid guest tokens.
+- Keeps authenticated sessions tied to verified JWT identities.
+- Added a database migration and isolation tests.
+
+Latest commit: [6a20bba](https://github.com/9394113857/Assistant-Service/commit/6a20bbad5450026d04438f1b494b1743d55500ae?utm_source=chatgpt.com)
+
+## **2. Frontend — Angular-Ecommerce**
+
+[Open frontend feature branch](https://github.com/9394113857/Angular-Ecommerce/tree/feature/guest-session-isolation?utm_source=chatgpt.com)
+
+Changes:
+
+- Stores guest tokens in `sessionStorage`.
+- Sends the token with subsequent chat messages.
+- Uses the correct authentication storage key (`token`).
+- Clears the guest token when an authenticated user sends a message.
+- Removed the hardcoded demo user ID from chat requests.
+- Added Angular service tests.
+
+Latest commit: [9c9ded](https://github.com/9394113857/Angular-Ecommerce/commit/9c9deda18672e8f0324daa7e8d4ad2e64bdb3521?utm_source=chatgpt.com)
+
+## **3. Important before deployment**
+
+Not deployed yet
+
+We must follow this order:
+
+1. Apply the new Alembic migration to Supabase.
+2. Deploy the updated Assistant-Service backend.
+3. Deploy the updated Angular frontend.
+4. Test two independent guest sessions.
+
+I have added the tests but haven't executed them in a test runtime. Both `main` branches remain untouched.
+
+**Next, let's verify the migration and backend tests before deploying anything, bro.** ❤️
 
 
 

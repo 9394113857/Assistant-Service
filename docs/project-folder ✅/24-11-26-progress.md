@@ -959,6 +959,31 @@ Each intent gets one realistic user message and a reason explaining why that mes
 
 **This completes the first part: two tables covering all 23 existing intent labels.** Next, we can compare these candidates against actual Supabase messages and retain only the useful training examples.
 
+==================================================================
 
+Yes brooooo! ❤️ Exactly.
 
+We've prepared both chat-based tables covering the 23 intents.
+
+**Next, I want to inspect the actual Render and Supabase results**, so our new training dataset is based on real chatbot behaviour rather than assumptions.
+
+Please share:
+
+1. **Render results:** Latest Assistant-Service logs, especially chatbot requests, intent predictions, errors and responses.
+2. **Supabase results:** The latest `assistant_training_logs`, `chat_messages` and `chat_sessions` records.
+
+We'll compare:
+
+| What we compare        | Purpose                        |
+| ---------------------- | ------------------------------ |
+| Guest vs authenticated | Identify user context          |
+| User message           | Understand actual wording      |
+| Predicted intent       | Check classifier prediction    |
+| Actual intent          | Validate training label        |
+| Assistant response     | Check chatbot behaviour        |
+| Confidence score       | Identify uncertain predictions |
+
+Then we'll identify which real messages to retain for training across all 23 intents.
+
+**No database changes, no code changes, no deployment yet.** First inspect the evidence, bro. 💪
 

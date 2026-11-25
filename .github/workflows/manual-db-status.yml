@@ -1,0 +1,143 @@
+name: "🔎 Manual - Assistant Service Database Status"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-service-database-status
+  cancel-in-progress: false
+
+jobs:
+  database-status:
+    name: "Read Supabase Migration Status"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: "📥 Checkout Selected Branch"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "📦 Install PostgreSQL Driver"
+        run: python -m pip install "psycopg[binary]==3.3.9"
+
+      - name: "🔐 Validate Database Secret"
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::GitHub Actions secret DATABASE_URL is missing."
+            exit 1
+          fi
+          echo "DATABASE_URL secret is configured. Value will not be displayed."
+
+      - name: "🔎 Fetch Database and Repository Migration Status"
+        run: |
+          python <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          import psycopg
+
+          # Read the current database revision. This query is read-only.
+          try:
+              with psycopg.connect(
+                  os.environ["DATABASE_URL"],
+                  connect_timeout=15,
+                  autocommit=True,
+              ) as connection:
+                  with connection.cursor() as cursor:
+                      cursor.execute("SELECT version_num FROM alembic_version ORDER BY version_num")
+                      database_revisions = [row[0] for row in cursor.fetchall()]
+          except Exception as exc:
+              print(f"::error::Could not read alembic_version: {type(exc).__name__}: {exc}")
+              sys.exit(1)
+
+          # Read migration metadata from this checked-out Git branch.
+          migration_dir = Path("migrations/versions")
+          migrations = []
+
+          for path in sorted(migration_dir.glob("*.py")):
+              source = path.read_text(encoding="utf-8-sig")
+              revision_match = re.search(r"^revision\s*=\s*['\"]([^'\"]+)['\"]", source, re.M)
+              down_match = re.search(
+                  r"^down_revision\s*=\s*(None|['\"][^'\"]+['\"])",
+                  source,
+                  re.M,
+              )
+              if not revision_match:
+                  continue
+              revision = revision_match.group(1)
+              parent = None
+              if down_match and down_match.group(1) != "None":
+                  parent = down_match.group(1).strip("'\"")
+              migrations.append((revision, parent, path.name))
+
+          known_revisions = {item[0] for item in migrations}
+          referenced_parents = {item[1] for item in migrations if item[1]}
+          heads = sorted(known_revisions - referenced_parents)
+
+          by_revision = {revision: parent for revision, parent, _ in migrations}
+          applied_revisions = set()
+          for current_revision in database_revisions:
+              cursor_revision = current_revision
+              while cursor_revision and cursor_revision not in applied_revisions:
+                  applied_revisions.add(cursor_revision)
+                  cursor_revision = by_revision.get(cursor_revision)
+
+          print()
+          print("=" * 78)
+          print("ASSISTANT-SERVICE | DATABASE MIGRATION STATUS")
+          print("=" * 78)
+          print(f"Database revision(s): {', '.join(database_revisions) if database_revisions else 'NONE'}")
+          print(f"Repository migration files: {len(migrations)}")
+          print(f"Repository head count: {len(heads)}")
+          print(f"Repository head(s): {', '.join(heads) if heads else 'NONE'}")
+          print("-" * 78)
+          print(f"{'REVISION':<16} {'PARENT':<16} {'DATABASE':<12} FILE")
+          print("-" * 78)
+
+          for revision, parent, filename in migrations:
+              if revision in database_revisions:
+                  status = "CURRENT"
+              elif revision in applied_revisions:
+                  status = "APPLIED"
+              else:
+                  status = "PENDING"
+              print(f"{revision:<16} {(parent or 'BASE'):<16} {status:<12} {filename}")
+
+          print("-" * 78)
+          if len(heads) == 1:
+              print("GRAPH CHECK: PASS - one repository head detected.")
+          else:
+              print(f"GRAPH CHECK: WARNING - {len(heads)} repository heads detected.")
+
+          unknown_db_revisions = sorted(set(database_revisions) - known_revisions)
+          if unknown_db_revisions:
+              print("DATABASE CHECK: WARNING - database revision is not present in this checkout:")
+              for revision in unknown_db_revisions:
+                  print(f"  - {revision}")
+          elif database_revisions:
+              print("DATABASE CHECK: PASS - database revision is present in this checkout.")
+          else:
+              print("DATABASE CHECK: WARNING - alembic_version contains no revision rows.")
+
+          print("=" * 78)
+          PY
+
+      - name: "✅ Status Check Completed"
+        run: |
+          echo "Read-only database status check completed."
+          echo "No schema changes or migrations were executed."

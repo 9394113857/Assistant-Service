@@ -89,6 +89,14 @@ jobs:
           referenced_parents = {item[1] for item in migrations if item[1]}
           heads = sorted(known_revisions - referenced_parents)
 
+          by_revision = {revision: parent for revision, parent, _ in migrations}
+          applied_revisions = set()
+          for current_revision in database_revisions:
+              cursor_revision = current_revision
+              while cursor_revision and cursor_revision not in applied_revisions:
+                  applied_revisions.add(cursor_revision)
+                  cursor_revision = by_revision.get(cursor_revision)
+
           print()
           print("=" * 78)
           print("ASSISTANT-SERVICE | DATABASE MIGRATION STATUS")
@@ -104,8 +112,8 @@ jobs:
           for revision, parent, filename in migrations:
               if revision in database_revisions:
                   status = "CURRENT"
-              elif revision not in known_revisions:
-                  status = "UNKNOWN"
+              elif revision in applied_revisions:
+                  status = "APPLIED"
               else:
                   status = "PENDING"
               print(f"{revision:<16} {(parent or 'BASE'):<16} {status:<12} {filename}")
@@ -128,14 +136,6 @@ jobs:
 
           print("=" * 78)
           PY
-
-      - name: "📋 Print Alembic Graph Details"
-        run: |
-          echo "----- Alembic heads -----"
-          python -m pip install "alembic==1.20.1"
-          alembic heads || true
-          echo "----- Alembic history (repository metadata) -----"
-          alembic history || true
 
       - name: "✅ Status Check Completed"
         run: |

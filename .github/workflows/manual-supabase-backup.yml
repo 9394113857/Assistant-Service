@@ -1,0 +1,218 @@
+name: "🛡️ Manual - Supabase Database Backup"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_backup:
+        description: 'Type BACKUP to confirm that you want to export the production database.'
+        required: true
+        type: string
+        default: "NO"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assistant-service-supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  database-backup:
+    name: "Create and Encrypt Supabase SQL Backup"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Reuses the existing secret used by the read-only Alembic overview.
+      # The secret value is never printed by this workflow.
+      SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      CONFIRM_PRODUCTION_BACKUP: ${{ inputs.confirm_production_backup }}
+
+    steps:
+      - name: "🛑 Validate Branch, Confirmation and Secrets"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/feature/guest-session-isolation" ]]; then
+            echo "::error::Run this workflow from feature/guest-session-isolation only."
+            exit 1
+          fi
+
+          if [[ "$CONFIRM_PRODUCTION_BACKUP" != "BACKUP" ]]; then
+            echo "::error::Confirmation missing. Enter BACKUP in the workflow input to continue."
+            exit 1
+          fi
+
+          if [[ -z "$SUPABASE_DB_URL" ]]; then
+            echo "::error::GitHub Actions secret DATABASE_URL is missing."
+            exit 1
+          fi
+
+          if [[ -z "$BACKUP_ENCRYPTION_PASSPHRASE" || ${#BACKUP_ENCRYPTION_PASSPHRASE} -lt 32 ]]; then
+            echo "::error::Add BACKUP_ENCRYPTION_PASSPHRASE as a GitHub Actions secret with at least 32 characters."
+            exit 1
+          fi
+
+          echo "Branch and manual confirmation validated."
+          echo "Required secrets are configured; secret values will not be displayed."
+
+      - name: "📥 Checkout Selected Feature Branch"
+        uses: actions/checkout@v4
+
+      - name: "🐳 Verify Docker Availability"
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          echo "Docker daemon is available on the GitHub-hosted runner."
+
+      - name: "🧰 Install Supabase CLI"
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: "🔎 Validate Database Target Safely"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+
+          value = os.environ["SUPABASE_DB_URL"]
+          parsed = urlparse(value)
+          if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
+              raise SystemExit("::error::DATABASE_URL is not a valid PostgreSQL connection URL.")
+          print("Database connection URL format: valid")
+          print(f"Database host: {parsed.hostname}")
+          print("Credentials and full connection URL: hidden")
+          PY
+
+      - name: "💾 Backup Custom Roles"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump --remote="$SUPABASE_DB_URL" -f roles.sql --role-only
+
+      - name: "💾 Backup Database Schema"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump --remote="$SUPABASE_DB_URL" -f schema.sql
+
+      - name: "💾 Backup Table Data"
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump \
+            --remote="$SUPABASE_DB_URL" \
+            -f data.sql \
+            --data-only \
+            --use-copy \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes"
+
+      - name: "✅ Verify Backup Files and Create Manifest"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in roles.sql schema.sql data.sql; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error::Backup file is missing or empty: $file"
+              exit 1
+            fi
+          done
+
+          {
+            echo "Assistant-Service Supabase logical database backup"
+            echo "Created UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Repository: $GITHUB_REPOSITORY"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            echo "Files inside encrypted archive: roles.sql, schema.sql, data.sql"
+            echo "Scope: Supabase CLI logical dump of supported database roles, schema and table data."
+            echo "This is not a complete Supabase platform backup."
+            echo "Supabase-managed schemas (including auth and storage), storage objects, Edge Functions, project secrets and PITR are not included."
+            echo "Restore has not been tested by this workflow."
+          } > backup-manifest.txt
+
+          echo "Backup SQL files created and verified (file names and sizes only):"
+          ls -lh roles.sql schema.sql data.sql backup-manifest.txt
+
+      - name: "🔐 Encrypt Backup Before Artifact Upload"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive="assistant-service-supabase-backup.tar.gz"
+          encrypted="assistant-service-supabase-backup.tar.gz.gpg"
+
+          tar -czf "$archive" roles.sql schema.sql data.sql backup-manifest.txt
+
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 \
+            --output "$encrypted" "$archive"
+
+          if [[ ! -s "$encrypted" ]]; then
+            echo "::error::Encrypted backup file was not created."
+            exit 1
+          fi
+
+          # Verify that the encrypted archive can be decrypted and listed.
+          gpg --batch --quiet --pinentry-mode loopback \
+            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
+            --decrypt "$encrypted" | tar -tzf - >/dev/null
+
+          sha256sum "$encrypted" > "$encrypted.sha256"
+
+          # Remove plaintext SQL and the unencrypted archive before upload.
+          rm -f roles.sql schema.sql data.sql "$archive"
+
+          if [[ -e roles.sql || -e schema.sql || -e data.sql || -e "$archive" ]]; then
+            echo "::error::Plaintext backup files remain in the workspace."
+            exit 1
+          fi
+
+          echo "Encrypted archive created and decryption verification passed."
+          ls -lh "$encrypted" "$encrypted.sha256" backup-manifest.txt
+
+          {
+            echo "## Supabase backup encrypted and verified"
+            echo
+            echo "| File | Size |"
+            echo "|---|---:|"
+            for file in "$encrypted" "$encrypted.sha256" backup-manifest.txt; do
+              size=$(du -h "$file" | cut -f1)
+              echo "| `$file` | $size |"
+            done
+            echo
+            echo "**Security:** Only the AES-256 encrypted archive is uploaded with its checksum. Plaintext SQL files are removed before upload."
+            echo
+            echo "**Scope limitation:** This is a logical dump, not a complete Supabase platform backup. It excludes Supabase-managed schemas such as Auth and Storage, storage objects, Edge Functions, project secrets and PITR. Restore has not been tested."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "📦 Upload Encrypted Workflow Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: assistant-service-supabase-backup-${{ github.run_id }}
+          path: |
+            assistant-service-supabase-backup.tar.gz.gpg
+            assistant-service-supabase-backup.tar.gz.gpg.sha256
+            backup-manifest.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: "🎉 Encrypted Backup Artifact Uploaded"
+        if: success()
+        run: |
+          echo "Encrypted backup artifact uploaded successfully."
+          echo "Download it from this workflow run's Artifacts section."
+          echo "The encryption passphrase is required to decrypt it."
+          echo "No plaintext SQL files were committed or uploaded."
+          echo "No database schema or data was modified."

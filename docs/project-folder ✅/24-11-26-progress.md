@@ -882,5 +882,83 @@ The GitHub artifact expires on **2 December 2026**, so don't rely on GitHub as t
 
 Download the ZIP and tell me when it's saved. If possible, share a screenshot of the extracted filenames (but never show the passphrase). Then we'll inspect the files together, one step at a time. 💪
 
+==================================================================
+
+Got it, bro! ❤️ We'll cover **exactly the 23 intent labels identified in our existing reviewed Supabase records**.
+
+We'll prepare two separate tables:
+
+1. Guest users — not logged in.
+2. Authenticated users — logged in.
+
+Each intent gets one realistic user message and a reason explaining why that message is useful for training. These are proposed training examples, not messages claimed to have come from actual users.
+
+## **Table 1 — Guest users (not logged in)**
+
+| S.No | Intent               | Exact user message                        | Why this is useful                       |
+| ---- | -------------------- | ----------------------------------------- | ---------------------------------------- |
+| 1    | greeting             | Hi, how are you?                          | Recognize greetings                      |
+| 2    | assistant_identity   | Who are you?                              | Identify assistant-related questions     |
+| 3    | assistant_about      | What can you help me with?                | Understand assistant capabilities        |
+| 4    | clarification        | Can you explain that in simpler words?    | Recognize clarification requests         |
+| 5    | show_products        | Show me all available products            | Identify catalogue requests              |
+| 6    | product_category     | Do you have smartphones?                  | Identify category searches               |
+| 7    | cheaper_product      | Show me affordable products under 30000   | Identify budget-based searches           |
+| 8    | costliest_product    | Which is your most expensive laptop?      | Identify highest-price searches          |
+| 9    | product_detail       | Show me the specifications of this laptop | Identify product detail requests         |
+| 10   | product_price        | How much does this smartphone cost?       | Identify price questions                 |
+| 11   | product_stock        | Is this laptop available in stock?        | Identify stock enquiries                 |
+| 12   | product_compare      | Compare these two smartphones             | Identify comparison requests             |
+| 13   | product_alternatives | Show me alternatives to this laptop       | Identify alternative searches            |
+| 14   | product_advice       | Which laptop is suitable for programming? | Understand product requirements          |
+| 15   | recommend_product    | Recommend a good smartphone               | Identify recommendation requests         |
+| 16   | add_to_cart          | Can you add this laptop to my cart?       | Recognize cart action requests           |
+| 17   | view_cart            | Can I view my shopping cart?              | Recognize cart viewing requests          |
+| 18   | show_orders          | Can I see my previous orders?             | Identify account-specific requests       |
+| 19   | track_order          | Where is my order right now?              | Identify order tracking requests         |
+| 20   | order                | I want to cancel my previous order        | Recognize order-related requests         |
+| 21   | weather              | What is the weather in Hyderabad?         | Recognize weather questions              |
+| 22   | general_knowledge    | What is the capital of Japan?             | Recognize general knowledge              |
+| 23   | unknown              | asdfghjkl what is this                    | Identify unsupported or unclear messages |
+
+## **Table 2 — Authenticated users (logged in)**
+
+| S.No | Intent               | Exact user message                               | Why this is useful                       |
+| ---- | -------------------- | ------------------------------------------------ | ---------------------------------------- |
+| 1    | greeting             | Hello, I am back again                           | Recognize returning-user greetings       |
+| 2    | assistant_identity   | Who developed this assistant?                    | Identify assistant-related questions     |
+| 3    | assistant_about      | What features can I use in this chatbot?         | Understand assistant capabilities        |
+| 4    | clarification        | Please explain your previous answer more clearly | Recognize clarification requests         |
+| 5    | show_products        | Display all products available in the catalogue  | Identify catalogue requests              |
+| 6    | product_category     | Show me all available laptops                    | Identify category searches               |
+| 7    | cheaper_product      | Find me a laptop below 50000                     | Identify budget-based searches           |
+| 8    | costliest_product    | Show me the costliest smartphone                 | Identify highest-price searches          |
+| 9    | product_detail       | Tell me the specifications of the first product  | Identify product detail requests         |
+| 10   | product_price        | What is the price of the laptop in my selection? | Identify price questions                 |
+| 11   | product_stock        | How many units of this phone are available?      | Identify stock enquiries                 |
+| 12   | product_compare      | Which is better between these two laptops?       | Identify comparison requests             |
+| 13   | product_alternatives | Find similar products for this smartphone        | Identify alternative searches            |
+| 14   | product_advice       | Help me choose a laptop for office work          | Understand product requirements          |
+| 15   | recommend_product    | Suggest a smartphone based on my requirements    | Identify recommendation requests         |
+| 16   | add_to_cart          | Add two units of the first laptop to my cart     | Recognize cart action requests           |
+| 17   | view_cart            | Show all items and quantities in my cart         | Recognize cart viewing requests          |
+| 18   | show_orders          | Display my previous purchase history             | Identify order history requests          |
+| 19   | track_order          | What is the current status of my latest order?   | Identify order tracking requests         |
+| 20   | order                | Cancel my latest eligible order                  | Recognize order-related requests         |
+| 21   | weather              | Is it raining in Hyderabad today?                | Recognize weather questions              |
+| 22   | general_knowledge    | Explain how artificial intelligence works        | Recognize general knowledge              |
+| 23   | unknown              | xyz123 I need something                          | Identify unsupported or unclear messages |
+
+## **Important training notes**
+
+1. We are keeping the same 23 labels in both tables; we are not introducing new intents.
+2. Guest and authenticated status should be stored separately as `user_type`, not treated as an intent.
+3. `order` appears in our reviewed actual-intent records, but our current `rule_v4` uses `show_orders` for generic order-related messages. We should investigate this label difference before training.
+4. Guest messages about cart and orders are useful for testing authentication handling, even if those operations require login.
+5. These examples must remain separate from real Supabase conversation records until reviewed.
+
+**This completes the first part: two tables covering all 23 existing intent labels.** Next, we can compare these candidates against actual Supabase messages and retain only the useful training examples.
+
+
 
 

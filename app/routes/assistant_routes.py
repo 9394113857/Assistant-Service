@@ -6,7 +6,10 @@ from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 
 from app.extensions import db
 from app.models.assistant_training_log import AssistantTrainingLog
-from app.services.assistant_orchestrator import process_user_message
+from app.services.assistant_orchestrator import (
+    GuestSessionNotFound,
+    process_user_message,
+)
 from app.services.intent_registry import INTENT_HANDLER_MAP
 
 assistant_bp = Blueprint("assistant", __name__)
@@ -41,13 +44,30 @@ def chat():
     token_identity = get_jwt_identity()
     if token_identity is None:
         user_id = None
+        guest_session_token = data.get("guest_session_token")
+        if guest_session_token is not None and (
+            not isinstance(guest_session_token, str)
+            or not guest_session_token.strip()
+            or len(guest_session_token) > 256
+        ):
+            return jsonify({"error": "Invalid guest_session_token"}), 400
     else:
         try:
             user_id = int(token_identity)
         except (TypeError, ValueError):
             return jsonify({"error": "Invalid authenticated user identity"}), 401
+        # A guest token must never select or influence an authenticated session.
+        guest_session_token = None
 
-    result = process_user_message(user_id, message)
+    try:
+        result = process_user_message(
+            user_id,
+            message,
+            guest_session_token=guest_session_token,
+        )
+    except GuestSessionNotFound:
+        return jsonify({"error": "Guest session not found. Start a new chat."}), 401
+
     return jsonify(result)
 
 

@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+
 from app.extensions import db
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage
@@ -16,30 +19,61 @@ LOGIN_REQUIRED_INTENTS = {
 }
 
 
-def process_user_message(user_id, message):
+class GuestSessionNotFound(Exception):
+    """Raised when a supplied guest token does not identify a guest session."""
+
+
+def _guest_token_digest(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def process_user_message(user_id, message, guest_session_token=None):
     message = (message or "").strip()
     if not message:
         return {
             "response": "Please enter a message.",
             "intent": "unknown",
             "confidence": 0.0,
-            "model_version": "rule_v3",
+            "model_version": "rule_v4",
         }
 
-    # Session management
-    session = (
-        ChatSession.query
-        .filter_by(user_id=user_id)
-        .order_by(ChatSession.created_at.desc())
-        .first()
-    )
+    response_guest_token = None
 
-    if not session:
-        session = ChatSession(user_id=user_id)
-        db.session.add(session)
-        db.session.commit()
+    # Authenticated sessions are always selected by the verified JWT user ID.
+    # Guest sessions are selected only by the hash of their opaque token.
+    if user_id is None:
+        if guest_session_token:
+            token_digest = _guest_token_digest(guest_session_token)
+            session = (
+                ChatSession.query
+                .filter_by(user_id=None, guest_token_hash=token_digest)
+                .first()
+            )
+            if session is None:
+                raise GuestSessionNotFound()
+            response_guest_token = guest_session_token
+        else:
+            response_guest_token = secrets.token_urlsafe(32)
+            session = ChatSession(
+                user_id=None,
+                guest_token_hash=_guest_token_digest(response_guest_token),
+            )
+            db.session.add(session)
+            db.session.commit()
+    else:
+        session = (
+            ChatSession.query
+            .filter_by(user_id=user_id)
+            .order_by(ChatSession.created_at.desc())
+            .first()
+        )
 
-    # Load recent conversation context
+        if not session:
+            session = ChatSession(user_id=user_id)
+            db.session.add(session)
+            db.session.commit()
+
+    # Load recent context only from the session resolved above.
     recent_messages = (
         ChatMessage.query
         .filter_by(session_id=session.id)
@@ -88,9 +122,13 @@ def process_user_message(user_id, message):
     ))
     db.session.commit()
 
-    return {
+    result = {
         "response": assistant_reply,
         "intent": intent,
         "confidence": confidence_score,
         "model_version": model_version,
     }
+    if response_guest_token is not None:
+        result["guest_session_token"] = response_guest_token
+
+    return result

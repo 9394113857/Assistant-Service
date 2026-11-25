@@ -1029,6 +1029,80 @@ Share the result here, bro.
 
 **This is the actual data we need for our new ML model:** real user wording, session context and user type. We'll inspect it before selecting training records. 💪
 
+==================================================================
+
+Brooooo! ❤️ Excellent! This is exactly the kind of evidence we needed.
+
+I've inspected the 50 records. Here's what we found.
+
+## **1. Actual Supabase findings**
+
+# **23**
+
+**Guest messages**
+
+Session ID 1
+
+# **25**
+
+**Authenticated messages**
+
+Session ID 2
+
+- Guest user ID is NULL.
+- Authenticated user ID is 2.
+- Both sessions contain messages covering our 23 intent categories.
+- Messages are timestamped and can be linked to their assistant responses.
+
+## **2. Important observation**
+
+These messages closely match the two example tables we just prepared. So this looks like a controlled chatbot test run, rather than independent organic customer conversations.
+
+That's useful! But we should keep these records classified as **test examples**, not mix them blindly into real training data.
+
+Also:
+
+- Authenticated messages contain a repeated assistant-identity question.
+- One message has an accidental trailing `]`.
+- We should verify what the chatbot actually replied to each message.
+
+## **3. Next query — get the assistant responses**
+
+Run this read-only query in Supabase:
+
+```
+SELECT
+    u.id AS user_message_id,
+    u.session_id,
+    CASE
+        WHEN s.user_id IS NULL THEN 'guest'
+        ELSE 'authenticated'
+    END AS user_type,
+    u.message AS user_message,
+    a.message AS assistant_response,
+    u.created_at
+FROM chat_messages u
+JOIN chat_sessions s
+    ON s.id = u.session_id
+LEFT JOIN LATERAL (
+    SELECT message
+    FROM chat_messages
+    WHERE session_id = u.session_id
+      AND role = 'assistant'
+      AND created_at > u.created_at
+    ORDER BY created_at
+    LIMIT 1
+) a ON TRUE
+WHERE u.role = 'user'
+  AND u.id BETWEEN 429 AND 523
+ORDER BY u.created_at;
+```
+
+**Why this next?** We need to understand not only what the user asked, but also how the assistant handled it.
+
+After that, we'll compare the messages with `assistant_training_logs` and identify which records are suitable for training our new model.
+
+One step at a time, bro! 💪
 
 
 

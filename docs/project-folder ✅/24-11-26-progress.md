@@ -737,5 +737,83 @@ Supabase Docs+1
 
 **Do the one-time GitHub secret setup first, bro.** Tell me when it's added, and we'll run the backup together. No migration or deployment yet. ❤️
 
+==================================================================
+
+Done bro! ❤️ The backup workflow is now also committed to `main`.
+
+Verified on both branches
+
+### **1. Main branch commit**
+
+- Commit: `2cf90e84`
+- Message: `Add manual Supabase backup workflow entry point`
+- File: `.github/workflows/manual-supabase-backup.yml`
+
+[View workflow on main](https://github.com/9394113857/Assistant-Service/blob/main/.github/workflows/manual-supabase-backup.yml?utm_source=chatgpt.com)
+
+The file SHA matches the feature branch. The guest-session application changes have not been merged.
+
+### **2. How to retrieve your generated passphrase**
+
+Since you generated it in your current PowerShell session, try:
+
+**Option A — View from PowerShell variable**
+
+```
+Write-Host $backupPassphrase
+```
+
+**Option B — Retrieve from clipboard**
+
+```
+Get-Clipboard
+```
+
+**Option C — Copy it again**
+
+```
+Set-Clipboard -Value $backupPassphrase
+```
+
+Keep it private
+
+Do not paste it into this chat, GitHub commits, or workflow logs.
+
+If you closed PowerShell and lost the clipboard and variable, the old passphrase cannot be recovered. Generate a new one and use that instead.
+
+### **3. Add the GitHub secret now**
+
+[Open GitHub Actions Secrets](https://github.com/9394113857/Assistant-Service/settings/secrets/actions?utm_source=chatgpt.com)
+
+Create:
+
+| Field  | Value                          |
+| ------ | ------------------------------ |
+| Name   | `BACKUP_ENCRYPTION_PASSPHRASE` |
+| Secret | Your generated passphrase      |
+
+Save it.
+
+### **4. Run our backup workflow**
+
+[Open GitHub Actions](https://github.com/9394113857/Assistant-Service/actions?utm_source=chatgpt.com)
+
+1. Find **🛡️ Manual - Supabase Database Backup**.
+2. Click **Run workflow**.
+3. Select `feature/guest-session-isolation`.
+4. Enter `BACKUP`.
+5. Click **Run workflow**.
+
+The workflow checks that it is running on the feature branch, creates the SQL exports, encrypts them and uploads an artifact.
+
+Supabase's CLI supports database URLs through `--remote`, and separate role/data dumps.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://supabase.com\&sz=32)
+
+Supabase Docs+1
+
+
+
+**Our next checkpoint:** Add the secret and tell me when it's saved. Then we'll run the backup and inspect its result together. No migration yet, bro! 💪
 
 

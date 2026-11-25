@@ -1402,4 +1402,90 @@ Then we'll build our first clean, reviewed dataset for the new ML classifier. We
 
 Slowly bro — first understand the mistakes, then train. 💪
 
+==================================================================
+
+Broooo! 🔥 Excellent. We now have the actual mismatch examples from your Supabase training logs.
+
+I inspected the uploaded file. It contains **63 incorrect prediction records**, covering multiple classifier versions (`rule_v1`, `rule_v2`, and `rule_v3`).
+
+## **1. What the mistakes tell us**
+
+These are the most important patterns:
+
+| Actual intent      | Existing prediction                  | Problem                                     |
+| ------------------ | ------------------------------------ | ------------------------------------------- |
+| `add_to_cart`      | `show_products` / `product_category` | Cart action not detected                    |
+| `assistant_about`  | `unknown`                            | Capability questions not recognized         |
+| `track_order`      | `show_orders`                        | Tracking and order listing confused         |
+| `view_cart`        | `show_products` / `unknown`          | Cart viewing not recognized                 |
+| `weather`          | `unknown`                            | Weather expressions missed                  |
+| `product_advice`   | `cheaper_product` / `show_products`  | Advice and product search confused          |
+| `product_category` | `recommend_product`                  | Category search and recommendation confused |
+
+One especially important observation: `track_order` has repeated failures even with confidence scores of 0.90–0.92. High confidence does not necessarily mean correct classification.
+
+## **2. Our first improvement priorities**
+
+**Priority 1 — Commerce actions**
+
+High
+
+- `add_to_cart`
+- `view_cart`
+- `track_order`
+- `show_orders`
+
+  **Priority 2 — Product understanding**
+
+  Medium
+- `product_advice`
+- `product_category`
+- `cheaper_product`
+- `recommend_product`
+
+  **Priority 3 — General assistant**
+
+  Medium
+- `assistant_about`
+- `assistant_identity`
+- `weather`
+- `clarification`
+
+## **3. One important dataset decision**
+
+We have records from three different rule versions. We should preserve `model_version` so that we can distinguish historical classifier errors from the current `rule_v4` baseline.
+
+Also:
+
+- Keep reviewed labels as ground truth.
+- Keep duplicate messages for now, but identify them before splitting training and testing data.
+- Do not include the 48 controlled test messages as reviewed examples until their actual intents are labelled.
+- Avoid putting identical or near-identical messages into both training and test sets.
+
+## **4. Next step — inspect the current rule_v4 errors**
+
+Our uploaded mismatch file contains historical errors, but we need to isolate errors from the current classifier before designing the new model.
+
+Run this query:
+
+```
+SELECT
+    actual_intent,
+    predicted_intent,
+    COUNT(*) AS mismatch_count,
+    ROUND(AVG(confidence_score)::numeric, 3) AS avg_confidence,
+    ARRAY_AGG(user_message ORDER BY created_at) AS example_messages
+FROM assistant_training_logs
+WHERE actual_intent IS NOT NULL
+  AND actual_intent <> predicted_intent
+  AND model_version = 'rule_v4'
+GROUP BY actual_intent, predicted_intent
+ORDER BY mismatch_count DESC;
+```
+
+Share that output next, bro.
+
+**Then we can start preparing the actual ML training dataset.** No code changes or deployment yet. One step at a time. 💪
+
+
 

@@ -1315,3 +1315,91 @@ Share this result next, bro.
 
 Then we can establish the actual training dataset for all existing intents and decide which classifier to train in **Assistant-Service ML Pipeline**. No code or database changes yet. ❤️
 
+==================================================================
+
+Brooo! ❤️ This is a very useful result. Now we can identify exactly where our existing `rule_v4` classifier is struggling.
+
+## **1. Overall reviewed performance**
+
+Based on your table:
+
+# **147**
+
+Correct predictions
+
+# **63**
+
+Incorrect predictions
+
+# **210**
+
+Reviewed records
+
+# **70%**
+
+Overall agreement
+
+One important detail: your table totals 210 reviewed records, whereas our earlier summary had 180. So this is an updated review dataset.
+
+## **2. Biggest problems to solve**
+
+| Intent           | Accuracy | What it tells us  |
+| ---------------- | -------- | ----------------- |
+| greeting         | 100%     | Strong            |
+| show_products    | 94.4%    | Strong            |
+| cheaper_product  | 73.1%    | Needs improvement |
+| product_category | 63.2%    | Needs improvement |
+| weather          | 36.4%    | Major issue       |
+| track_order      | 18.2%    | Major issue       |
+| assistant_about  | 16.7%    | Major issue       |
+| view_cart        | 0%       | Major issue       |
+| product_advice   | 0%       | Major issue       |
+| add_to_cart      | 0%       | Major issue       |
+
+**My interpretation:** We should focus on distinguishing similar user requests, rather than simply adding more training messages.
+
+Examples:
+
+- `show_orders` vs `track_order`
+- `assistant_about` vs `assistant_identity`
+- `view_cart` vs `add_to_cart`
+- `product_category` vs `show_products`
+- `product_advice` vs `cheaper_product`
+- `weather` vs `unknown`
+
+Also, some intents have very few reviewed records. For example, `product_advice` has only 3. We shouldn't conclude that the model will always fail based on such a small sample.
+
+## **3. Our next step — inspect actual mismatches**
+
+Before training anything, let's extract the actual incorrect examples. This is the most important step because we need to understand what the user typed, what `rule_v4` predicted, and what the reviewer labelled.
+
+Run this query in Supabase:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    confidence_score,
+    model_version,
+    created_at
+FROM assistant_training_logs
+WHERE actual_intent IS NOT NULL
+  AND actual_intent <> predicted_intent
+ORDER BY actual_intent, created_at;
+```
+
+
+
+Next task
+
+**Share the query result here.**
+
+
+
+Then we'll build our first clean, reviewed dataset for the new ML classifier. We'll keep `rule_v4` as the baseline, train the new model separately, and compare performance before integrating anything into Assistant-Service.
+
+Slowly bro — first understand the mistakes, then train. 💪
+
+

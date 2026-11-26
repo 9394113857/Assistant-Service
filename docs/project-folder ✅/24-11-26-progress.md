@@ -1875,7 +1875,8 @@ Our previous query reported **82 rule_v4 records**, but the new intent distribut
 
 Let's verify before we prepare labels.
 
-** Important SQL Query: **
+**Important SQL Query:**
+
 Run this SQL:
 
 ```
@@ -2800,6 +2801,7 @@ These are proposed improvement areas, not code changes yet.
 Now let's find out which intent classes have the most difficulty.
 
 **Important SQL Query:**
+
 Run this SQL in Supabase:
 
 ```

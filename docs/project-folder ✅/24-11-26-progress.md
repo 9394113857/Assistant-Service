@@ -3840,4 +3840,163 @@ Next intent: track_order
 
 **One batch at a time, bro.** First run the two SQL queries above and share the verification output.
 
+==================================================================
+
+**Important Topic:**
+
+Brooooo! 🔥 We have successfully completed our first intent collection cycle: `cancel_order`**&#x20;— guest + authenticated.**
+
+Both batches have been submitted through your actual chatbot, reviewed by us, and saved with human-approved labels in Supabase.
+
+Let's record exactly what we achieved.
+
+## **1. What happened in the authenticated batch?**
+
+Your SQL confirms:
+
+10 / 10 approved
+
+- 10 messages submitted while logged in.
+- All 10 had `user_id = 16`.
+- All 10 were originally predicted by `rule_v4`.
+- We reviewed their meanings and assigned `actual_intent = cancel_order`.
+- The original `predicted_intent` values were preserved.
+
+The original predictions were:
+
+| Prediction     | Count |
+| -------------- | ----- |
+| `show_orders`  | 8     |
+| `unknown`      | 2     |
+| `cancel_order` | 0     |
+
+This is another example of the same weakness we found in guest testing: the current classifier recognizes order-related wording but does not reliably distinguish cancellation from order-history requests.
+
+## **2. Our completed&#x20;**`cancel_order`**&#x20;dataset**
+
+# **22**
+
+**Reviewed cancellation messages**
+
+# **10**
+
+Guest messages
+
+# **10**
+
+Authenticated messages
+
+Previously reviewed examples\
+**2**
+
+New guest examples\
+**10**
+
+New authenticated examples\
+**10**
+
+**Total**\
+**22**
+
+Assuming the new messages are unique compared with the previous examples after normalization.
+
+One important distinction: 22 reviewed records do not necessarily mean 22 unique messages. We'll deduplicate before training.
+
+## **3. Next intent:&#x20;**`track_order`
+
+Now let's strengthen the second weak class.
+
+Currently, `track_order` has only **2 unique reviewed examples** in our original dataset.
+
+The meaning is:
+
+- `show_orders`: Show me my order history or list of orders.
+- `track_order`: Tell me the status, location or delivery progress of an order.
+- `cancel_order`: I want to stop or cancel an existing order.
+
+For example:
+
+| Customer message              | Correct intent |
+| ----------------------------- | -------------- |
+| Show all my previous orders   | `show_orders`  |
+| Where is my package now?      | `track_order`  |
+| Please cancel my latest order | `cancel_order` |
+
+## **4. Batch 1 — Guest&#x20;**`track_order`
+
+
+
+10 new messages
+
+Guest session
+
+
+
+Log out of your ecommerce website and submit these messages one at a time.
+
+| #  | Message to submit                                 | Expected intent |
+| -- | ------------------------------------------------- | --------------- |
+| 1  | Where is my package right now?                    | `track_order`   |
+| 2  | When should I expect my order to arrive?          | `track_order`   |
+| 3  | Has my order been dispatched?                     | `track_order`   |
+| 4  | I want to know the progress of my delivery        | `track_order`   |
+| 5  | Is my package on its way?                         | `track_order`   |
+| 6  | Can you check whether my parcel has been shipped? | `track_order`   |
+| 7  | My delivery is taking too long. What's happening? | `track_order`   |
+| 8  | Has the courier picked up my order?               | `track_order`   |
+| 9  | When will my purchased item be delivered?         | `track_order`   |
+| 10 | Give me an update about my shipment               | `track_order`   |
+
+Don't perform any actual order operation. These are classification tests.
+
+## **5. SQL — retrieve the 10 guest messages**
+
+After submitting all 10, execute:
+
+```
+SELECT
+    id,
+    user_id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at
+FROM assistant_training_logs
+WHERE created_at >= NOW() - INTERVAL '2 hours'
+  AND user_id IS NULL
+  AND model_version = 'rule_v4'
+  AND user_message IN (
+      'Where is my package right now?',
+      'When should I expect my order to arrive?',
+      'Has my order been dispatched?',
+      'I want to know the progress of my delivery',
+      'Is my package on its way?',
+      'Can you check whether my parcel has been shipped?',
+      'My delivery is taking too long. What''s happening?',
+      'Has the courier picked up my order?',
+      'When will my purchased item be delivered?',
+      'Give me an update about my shipment'
+  )
+ORDER BY created_at DESC;
+```
+
+## **6. What we'll do after you share the output**
+
+1. Check all 10 messages arrived.
+2. Verify guest identification (`user_id IS NULL`).
+3. Analyse `rule_v4` predictions and confidence.
+4. Approve the correct `actual_intent = 'track_order'` labels.
+5. Verify the SQL update.
+6. Move to authenticated `track_order`.
+
+**Our working principle, bro:**
+
+We are collecting examples intent by intent, with guest and authenticated variations, and manually verifying every label. We preserve the original classifier predictions so that later we can measure exactly how much our new ML model improves.
+
+Go ahead with the 10 guest tracking messages. Share the SQL output and we'll review it together! 🚀
+
+
+
 

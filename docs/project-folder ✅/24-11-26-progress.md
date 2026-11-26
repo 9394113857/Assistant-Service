@@ -2966,6 +2966,96 @@ It also shows whether identical messages have conflicting human-approved labels.
 
 Once you share the output, we'll take the next step towards our first TF-IDF + Logistic Regression model. 🚀
 
+==================================================================
+
+Excellent bro! 👍 This is a clean duplicate-analysis result. Let's understand what it tells us before moving to ML training.
+
+## **1. Duplicate analysis results**
+
+No conflicting labels found
+
+Your query found **6 repeated message groups**.
+
+| Normalized message             | Total rows | Label                |
+| ------------------------------ | ---------- | -------------------- |
+| Show my orders                 | 6          | `show_orders`        |
+| Show me all available products | 3          | `show_products`      |
+| Add this product to my cart    | 2          | `add_to_cart`        |
+| Hi                             | 2          | `greeting`           |
+| Who are you?                   | 2          | `assistant_identity` |
+| Who created you                | 2          | `assistant_identity` |
+
+All repeated messages have the same `actual_intent`.
+
+That means:
+
+- No identical normalized message has conflicting human-approved labels.
+- We don't need to resolve any label disagreements from these results.
+- We have 6 duplicate groups, with 17 rows in those groups.
+
+## **2. Why this matters for ML**
+
+Imagine we randomly split the data:
+
+- Training data contains `Show my orders`.
+- Testing data also contains `Show my orders`.
+
+The model may appear to perform well because it has already seen the exact message during training.
+
+This is called **data leakage** in our evaluation context.
+
+We should prevent identical messages from appearing in both training and testing datasets.
+
+## **3. Our dataset status**
+
+# **82**
+
+Reviewed records
+
+# **72**
+
+Unique normalized messages
+
+# **23**
+
+Intent classes
+
+# **0**
+
+Conflicting duplicate groups
+
+**Important:** 72 unique messages across 23 classes is still a very small dataset for a reliable 23-class ML classifier.
+
+## **4. What should we do next?**
+
+My recommendation is to create a deduplicated training view for analysis, without deleting or modifying the original Supabase records.
+
+For identical normalized messages with the same label, we can retain one representative message for the initial model experiment. Keep the original 82 records for audit and traceability.
+
+Before that, let's run one more read-only query to inspect how many examples each class has after deduplication.
+
+```
+WITH unique_messages AS (
+    SELECT DISTINCT ON (LOWER(TRIM(user_message)))
+        LOWER(TRIM(user_message)) AS normalized_message,
+        actual_intent
+    FROM assistant_training_logs
+    WHERE model_version = 'rule_v4'
+      AND actual_intent IS NOT NULL
+    ORDER BY LOWER(TRIM(user_message)), id
+)
+SELECT
+    actual_intent,
+    COUNT(*) AS unique_message_count
+FROM unique_messages
+GROUP BY actual_intent
+ORDER BY unique_message_count ASC, actual_intent;
+```
+
+**Why this query?** It shows how many distinct examples we actually have for each intent after removing exact normalized duplicates.
+
+Run this and share the output, bro. Then we'll decide whether our first TF-IDF + Logistic Regression experiment is feasible with this dataset or whether we should collect more reviewed messages first. 💪
+
 
 
 

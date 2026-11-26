@@ -3135,3 +3135,202 @@ One important distinction: `cancel_order` is now a human-approved dataset label,
 
 
 
+
+
+==================================================================
+
+Absolutely bro! 💪 This is the right next step. Instead of generating hundreds of random messages, we'll strengthen our two weakest intents first:
+
+1. `cancel_order` — currently only **2 unique messages**.
+2. `track_order` — currently only **2 unique messages**.
+
+We'll generate realistic customer messages in two user categories: **Guest** and **Authenticated (logged-in)**.
+
+One important ML concept before we start:
+
+**Guest vs authenticated is not a separate intent.** It is user metadata.
+
+For example:
+
+- Guest: "I want to cancel my order."
+- Logged-in user: "Please cancel my latest order."
+
+Both should be classified as `cancel_order`. The application then checks authentication and permissions before attempting the action.
+
+Similarly, both guest and logged-in users can ask to track an order. A guest may need to log in or provide an eligible order reference, depending on the application's rules.
+
+## **1. Our data collection plan**
+
+**Current dataset**
+
+# **2**
+
+Unique cancel_order messages
+
+# **2**
+
+Unique track_order messages
+
+**First collection target**
+
+# **20**
+
+New cancellation examples
+
+# **20**
+
+New tracking examples
+
+10 guest + 10 authenticated messages for each intent. These are generated examples, not organic customer conversations.
+
+This gives us 22 unique examples for each intent, assuming all 20 new messages remain unique after normalization.
+
+## **2. Intent 1 —&#x20;**`cancel_order`
+
+The user wants to cancel an existing order, whether they say "cancel", "I changed my mind", or "I don't want this order anymore".
+
+### **A. Guest user — 10 messages**
+
+user_type = guest
+
+| #  | User message                                   | Expected intent |
+| -- | ---------------------------------------------- | --------------- |
+| 1  | I want to cancel an order I placed             | `cancel_order`  |
+| 2  | Please stop my order from being processed      | `cancel_order`  |
+| 3  | I don't want the order I just placed           | `cancel_order`  |
+| 4  | Can I withdraw my recent purchase?             | `cancel_order`  |
+| 5  | I ordered the wrong item and want to cancel it | `cancel_order`  |
+| 6  | Please don't send my order                     | `cancel_order`  |
+| 7  | I changed my mind about buying this item       | `cancel_order`  |
+| 8  | Is it possible to call off my recent order?    | `cancel_order`  |
+| 9  | I no longer need the product I ordered         | `cancel_order`  |
+| 10 | How do I request cancellation of an order?     | `cancel_order`  |
+
+### **B. Authenticated user — 10 messages**
+
+user_type = authenticated
+
+| #  | User message                                            | Expected intent |
+| -- | ------------------------------------------------------- | --------------- |
+| 1  | Cancel my most recent order                             | `cancel_order`  |
+| 2  | I want to cancel order number 1052                      | `cancel_order`  |
+| 3  | Please cancel the order I placed yesterday              | `cancel_order`  |
+| 4  | Remove my latest purchase from the order queue          | `cancel_order`  |
+| 5  | I accidentally ordered two items. Cancel that order     | `cancel_order`  |
+| 6  | I want to cancel my pending order                       | `cancel_order`  |
+| 7  | Please withdraw my order before it gets shipped         | `cancel_order`  |
+| 8  | I don't want to receive my latest purchase anymore      | `cancel_order`  |
+| 9  | Can you cancel my order before dispatch?                | `cancel_order`  |
+| 10 | I need to request a cancellation for my recent purchase | `cancel_order`  |
+
+**What the classifier should learn:** The customer is expressing an intention to cancel an order, even when the word "cancel" is not explicitly used.
+
+## **3. Intent 2 —&#x20;**`track_order`
+
+The user wants to know the current status, location, delivery progress, or expected arrival of an existing order.
+
+### **A. Guest user — 10 messages**
+
+user_type = guest
+
+| #  | User message                                       | Expected intent |
+| -- | -------------------------------------------------- | --------------- |
+| 1  | I want to check where my order is                  | `track_order`   |
+| 2  | Has my package been shipped yet?                   | `track_order`   |
+| 3  | When will my order arrive?                         | `track_order`   |
+| 4  | Can I see the delivery progress of my purchase?    | `track_order`   |
+| 5  | My order hasn't arrived. Can you check its status? | `track_order`   |
+| 6  | Is my package still being prepared?                | `track_order`   |
+| 7  | I want to know the estimated delivery date         | `track_order`   |
+| 8  | Has my recent purchase left the warehouse?         | `track_order`   |
+| 9  | Can you tell me the current delivery status?       | `track_order`   |
+| 10 | I need an update on my order shipment              | `track_order`   |
+
+### **B. Authenticated user — 10 messages**
+
+user_type = authenticated
+
+| #  | User message                                        | Expected intent |
+| -- | --------------------------------------------------- | --------------- |
+| 1  | Track my latest order                               | `track_order`   |
+| 2  | Check the status of order number 1052               | `track_order`   |
+| 3  | Where is my recently purchased laptop?              | `track_order`   |
+| 4  | Please show the shipping progress of my order       | `track_order`   |
+| 5  | Is my order out for delivery?                       | `track_order`   |
+| 6  | Tell me when my order is expected to reach me       | `track_order`   |
+| 7  | Has the courier collected my package?               | `track_order`   |
+| 8  | I want an update on my pending delivery             | `track_order`   |
+| 9  | Can you check whether my order has been dispatched? | `track_order`   |
+| 10 | Show me the latest update for my purchase           | `track_order`   |
+
+**What the classifier should learn:** These messages are about finding an order's status or delivery progress, not viewing the complete order history.
+
+## **4. How we should collect these messages**
+
+I recommend that we test them through the actual chatbot rather than directly inserting generated labels into Supabase.
+
+Our workflow:
+
+1. **Create a guest test session**
+
+   Open the ecommerce website without logging in. Submit the 10 guest cancellation and 10 guest tracking messages.
+2. **Create an authenticated test session**
+
+   Log in using your test account. Submit the 10 authenticated cancellation and 10 authenticated tracking messages.
+3. **Check the logs**
+
+   Verify that the messages are recorded in `assistant_training_logs`, with their predictions, model version and session/user information where available.
+4. **Review the actual intent**
+
+   We assign the human-reviewed label only after confirming what the message means.
+5. **Prepare the ML dataset**
+
+   Keep the original message, approved intent, user type and source type. Deduplicate identical normalized messages before splitting the training and evaluation data.
+
+## **5. How we should save the training data**
+
+I recommend these columns for our dataset export:
+
+| Column          | Example                | Purpose              |
+| --------------- | ---------------------- | -------------------- |
+| `user_message`  | Cancel my latest order | Original text        |
+| `actual_intent` | `cancel_order`         | Human-approved label |
+| `user_type`     | `guest`                | User category        |
+| `source_type`   | `controlled_test`      | Data origin          |
+| `review_status` | `approved`             | Review tracking      |
+
+Keep `user_type` and `source_type` as metadata. Do not accidentally create separate classes such as `guest_cancel_order` and `authenticated_cancel_order`.
+
+Also, because these are generated examples, mark them as `controlled_test` or `synthetic`, rather than pretending they came from real customers.
+
+## **6. Important project-specific cautions**
+
+- `track_order` already exists in your current intent classifier and order handler, but classification does not guarantee that order tracking works correctly.
+- `cancel_order` is a newly approved dataset label. It is not yet implemented in the runtime classifier or order handler.
+- Do not use a real customer's order for cancellation testing. Use a test account and test order.
+- A guest's cancellation request should still be classified as `cancel_order`; the application should then enforce authentication.
+- Do not count these 40 generated examples as independent evidence of production accuracy.
+
+## **7. Your first collection checklist**
+
+**Collection progress**
+
+0/6
+
+Submit 10 guest cancel_order messages
+
+Submit 10 authenticated cancel_order messages
+
+Submit 10 guest track_order messages
+
+Submit 10 authenticated track_order messages
+
+Check the Supabase records and predictions
+
+Review the labels before including them in training
+
+**Let's go slowly, bro.** Start with the first 10 guest `cancel_order` messages. Submit them through your website and share the resulting Supabase records. We'll inspect the predictions before moving to the authenticated batch.
+
+Our goal is not just to increase the row count. It is to teach the model different ways real customers express the same intent. 💪
+
+

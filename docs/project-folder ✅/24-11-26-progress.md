@@ -4137,6 +4137,8 @@ First, run the update and verification queries above and share their results, br
 
 ==================================================================
 
+**Important Topic Some Finalized Workflow:**
+
 Absolutely, bro! ❤️ Now I understand exactly what you want. We are not just writing SQL queries. We are building a **proper, human-reviewed machine-learning training dataset**, step by step, and you want to understand the complete story behind it.
 
 First, here is the exact verification SQL you asked for.

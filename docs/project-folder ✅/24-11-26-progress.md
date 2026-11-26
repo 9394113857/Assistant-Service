@@ -4597,6 +4597,8 @@ We are not training the model yet. We are building and validating the educationa
 
 ==================================================================
 
+**Again Same flow Important Topic:**
+
 Got you, bro! ❤️ You want the **complete three-step workflow together every time**, just like the previous batch. You will execute the SQLs and share the final results. I'll review them and guide the next batch.
 
 # **Authenticated track_order — Batch 2**

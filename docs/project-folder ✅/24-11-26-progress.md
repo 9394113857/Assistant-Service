@@ -3058,7 +3058,80 @@ ORDER BY unique_message_count ASC, actual_intent;
 
 Run this and share the output, bro. Then we'll decide whether our first TF-IDF + Logistic Regression experiment is feasible with this dataset or whether we should collect more reviewed messages first. 💪
 
+==================================================================
 
+Bro, this result gives us an important finding. Our 82 reviewed records become **72 unique messages across 23 intent classes** after removing exact duplicates.
+
+But there is one challenge: several classes have only 2 or 3 unique examples.
+
+## **1. Unique dataset distribution**
+
+All 23 classes have reviewed examples
+
+| Unique examples per intent | Number of classes |
+| -------------------------- | ----------------- |
+| 2                          | 6                 |
+| 3                          | 12                |
+| 4                          | 2                 |
+| 5                          | 1                 |
+| 7                          | 1                 |
+| **Total**                  | **23**            |
+
+Number of intent classes grouped by unique example count.
+
+04812162 examples3 examples4 examples5 examples7 examples
+
+## **2. Can we train our first ML model now?**
+
+My technical assessment:
+
+**TF-IDF + Logistic Regression**
+
+Exploratory only
+
+We can technically build a prototype, but this dataset is not sufficient to evaluate a reliable 23-class classifier.
+
+**Why?**
+
+- Six classes have just 2 examples each.
+- Twelve classes have just 3 examples each.
+- A normal train/test split could leave some classes without enough training or testing examples.
+- A model could memorize phrases rather than learn meaningful intent patterns.
+
+For example, `cancel_order` has only:
+
+- "I want to cancel my previous order"
+- "Cancel my latest eligible order"
+
+Two examples are not enough to learn the different ways customers express cancellation requests.
+
+## **3. My recommendation: collect more reviewed messages**
+
+Let's target an initial dataset of approximately 25–30 unique examples per intent before serious multiclass evaluation.
+
+| Dataset            | Current | Initial target |
+| ------------------ | ------- | -------------- |
+| Unique messages    | 72      | 575–690        |
+| Intent classes     | 23      | 23             |
+| Examples per class | 2–7     | 25–30          |
+
+This is a practical starting target, not a guarantee of model quality. We should also collect naturally occurring variations, not just generate repetitive sentences.
+
+## **4. What comes next?**
+
+I suggest we do this in stages:
+
+1. Preserve the 82 reviewed records as our first labelled baseline.
+2. Collect additional messages from controlled tests and real conversations.
+3. Keep guest/authenticated status as metadata.
+4. Review labels before including messages in training.
+5. Train TF-IDF + Logistic Regression.
+6. Evaluate using leakage-safe validation and a confusion matrix.
+7. Compare its performance against `rule_v4`.
+
+One important distinction: `cancel_order` is now a human-approved dataset label, but it is not yet implemented in the runtime classifier or order handler.
+
+**My suggestion, bro:** Before generating hundreds of messages, let's first identify which intents need the most additional examples. We can work on the weakest classes first, starting with `cancel_order` and `track_order`.
 
 
 

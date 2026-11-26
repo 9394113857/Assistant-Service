@@ -1875,7 +1875,7 @@ Our previous query reported **82 rule_v4 records**, but the new intent distribut
 
 Let's verify before we prepare labels.
 
-*****
+** *****  **
 Run this SQL:
 
 ```

@@ -2842,6 +2842,128 @@ This is useful because we don't want to hide poorly recognized intents behind on
 
 **Our current baseline is 82.93%.** Next we'll understand performance class by class, then prepare the ML dataset. No code changes or deployment yet, bro. 💪
 
+==================================================================
+
+Brooooo! 🔥 This is a very important result. Now we have a complete performance picture of our existing `rule_v4` classifier.
+
+Our overall accuracy is **82.93%**, but the per-intent report reveals something important: some intents are performing well, while others need serious improvement.
+
+## **1. Per-intent performance analysis**
+
+# **82.93%**
+
+**Overall accuracy — 68 correct out of 82**
+
+100% recall intents
+
+**12 classes**
+
+Below 100% recall
+
+**9 classes**
+
+0% recall
+
+**2 classes**
+
+### **Critical areas**
+
+| Intent               | Recall | Correct / Total |
+| -------------------- | ------ | --------------- |
+| `cancel_order`       | **0%** | 0 / 2           |
+| `track_order`        | **0%** | 0 / 2           |
+| `clarification`      | 50%    | 1 / 2           |
+| `general_knowledge`  | 66.67% | 2 / 3           |
+| `product_price`      | 66.67% | 2 / 3           |
+| `assistant_about`    | 66.67% | 2 / 3           |
+| `product_stock`      | 66.67% | 2 / 3           |
+| `product_detail`     | 66.67% | 2 / 3           |
+| `assistant_identity` | 71.43% | 5 / 7           |
+| `recommend_product`  | 75%    | 3 / 4           |
+| `show_orders`        | 87.50% | 7 / 8           |
+
+The other 12 classes have 100% observed recall in this small test batch.
+
+## **2. What does this mean for our ML project?**
+
+Let's take two examples.
+
+**Example 1:&#x20;**`cancel_order`
+
+- Total messages: 2
+- Correct predictions: 0
+- Incorrect predictions: 2
+
+Our existing classifier does not distinguish cancellation requests from ordinary order queries in these two examples.
+
+**Example 2:&#x20;**`track_order`
+
+- Total messages: 2
+- Correct predictions: 0
+- Incorrect predictions: 2
+
+It similarly confuses tracking requests with `show_orders`.
+
+These are excellent examples to include in future training and evaluation data.
+
+But remember: two examples are not enough to establish the true performance of either intent.
+
+## **3. Our current baseline report**
+
+| Metric                            | Result |
+| --------------------------------- | ------ |
+| Total records                     | 82     |
+| Correct                           | 68     |
+| Incorrect                         | 14     |
+| Accuracy                          | 82.93% |
+| Intent classes                    | 23     |
+| Classes with 100% observed recall | 12     |
+| Classes with 0% recall            | 2      |
+
+One technical distinction: recall is not precision. Our current report measures how many actual messages of each intent were identified correctly. We'll also calculate precision and F1-score when we build the full evaluation report.
+
+## **4. Next step — Duplicate and data leakage analysis**
+
+Before training our first ML model, we need to solve an important problem.
+
+Your dataset contains:
+
+- 82 records
+- 72 unique messages
+- 10 repeated records
+
+For example, `Show my orders` occurs multiple times.
+
+If we randomly split these records into training and testing datasets, the same message could appear in both. The model might appear to perform better simply because it has already seen that message.
+
+We should group identical messages together when splitting.
+
+### **Run this next SQL query**
+
+```
+
+SELECT
+    LOWER(TRIM(user_message)) AS normalized_message,
+    COUNT(*) AS occurrence_count,
+    ARRAY_AGG(id ORDER BY id) AS record_ids,
+    ARRAY_AGG(DISTINCT actual_intent) AS actual_intents
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+GROUP BY LOWER(TRIM(user_message))
+HAVING COUNT(*) > 1
+ORDER BY occurrence_count DESC;
+
+```
+
+This identifies repeated messages after lowercasing and trimming whitespace.
+
+It also shows whether identical messages have conflicting human-approved labels.
+
+**Important:** We won't delete any records. We'll use this information to prepare a leakage-safe dataset.
+
+Once you share the output, we'll take the next step towards our first TF-IDF + Logistic Regression model. 🚀
+
 
 
 

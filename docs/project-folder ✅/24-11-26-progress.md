@@ -1897,3 +1897,51 @@ Share the output, bro.
 **Why are we checking this?** We want an exact, reliable dataset count before labeling and training. No assumptions, no accidental missing records.
 
 After this, we'll start reviewing the actual messages and their correct intent labels. ❤️
+
+==================================================================
+
+Perfect bro! ❤️ Now we have confirmed the exact dataset size.
+
+## **1. Confirmed rule_v4 dataset**
+
+# **82**
+
+Total records
+
+# **72**
+
+Unique messages
+
+# **82**
+
+Pending review
+
+# **0**
+
+Reviewed
+
+Count verified
+
+We also found why the previous distribution totalled 81: it appears one record was omitted from that grouped output. The 82-record count is confirmed by the direct count query.
+
+## **2. What this means for our ML project**
+
+We currently have:
+
+- 180 historical reviewed records from `rule_v1`–`rule_v3`.
+- 82 unreviewed records from `rule_v4`.
+- 262 total records across all versions.
+
+We should not mix all 262 blindly. Historical reviewed records can be training candidates after label and duplicate checks. The 82 `rule_v4` records can become a separate evaluation set after manual review.
+
+## **3. Next task — prepare the review sheet**
+
+Let's extract the 82 messages with their IDs and predicted intents so we can assign correct labels.
+
+You already shared this output, so no need to run another query.
+
+**My suggestion:** We'll review the 82 records in batches of 15–20, starting with the unknown and order-related messages because they contain important classification problems.
+
+We'll preserve the original predictions and only assign `actual_intent` after reviewing each message.
+
+One question before we proceed: **Are you ready to start reviewing the first batch of messages now, bro?** 💪

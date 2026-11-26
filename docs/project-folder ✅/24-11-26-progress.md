@@ -2045,3 +2045,182 @@ One important detail: the new `cancel_order` label will need to be supported by 
 **Shall I prepare the complete 82-record SQL review script now, without executing it?**
 
 
+
+
+==================================================================
+
+Absolutely bro! 🔥 Let's prepare our **complete 82-record review SQL script**.
+
+This script is for your `Assistant-Service` Supabase database. It contains every ID from **181 to 262**, including the newly approved `cancel_order` labels.
+
+# **82 / 82**
+
+**Agreed review labels**
+
+Database changes
+
+Not executed
+
+The SQL below only updates records whose actual_intent is currently NULL.
+
+## **Step 1 — Complete SQL update script**
+
+Copy this into a local file named `rule_v4_review_labels_update.sql` first.
+
+```
+
+-- Assistant-Service
+-- rule_v4: Human-reviewed intent labels
+-- Total records: 82 (IDs 181-262)
+--
+-- IMPORTANT:
+-- 1. Review this script before execution.
+-- 2. Only NULL actual_intent records will be updated.
+-- 3. reviewer_user_id and reviewed_at are intentionally unchanged.
+-- 4. This script does not modify classifier code or intent registry.
+
+WITH reviewed_labels (id, actual_intent) AS (
+    VALUES
+        (181, 'recommend_product'),
+        (182, 'show_orders'),
+        (183, 'show_orders'),
+        (184, 'show_orders'),
+        (185, 'show_orders'),
+        (186, 'show_orders'),
+        (187, 'greeting'),
+        (188, 'assistant_about'),
+        (189, 'show_products'),
+        (190, 'product_detail'),
+        (191, 'product_price'),
+        (192, 'product_stock'),
+        (193, 'recommend_product'),
+        (194, 'product_compare'),
+        (195, 'cheaper_product'),
+        (196, 'costliest_product'),
+        (197, 'product_alternatives'),
+        (198, 'add_to_cart'),
+        (199, 'view_cart'),
+        (200, 'show_orders'),
+        (201, 'general_knowledge'),
+        (202, 'assistant_identity'),
+        (203, 'weather'),
+        (204, 'unknown'),
+        (205, 'assistant_identity'),
+        (206, 'unknown'),
+        (207, 'assistant_identity'),
+        (208, 'greeting'),
+        (209, 'show_products'),
+        (210, 'add_to_cart'),
+        (211, 'add_to_cart'),
+        (212, 'unknown'),
+        (213, 'unknown'),
+        (214, 'unknown'),
+        (215, 'greeting'),
+        (216, 'assistant_identity'),
+        (217, 'assistant_about'),
+        (218, 'clarification'),
+        (219, 'show_products'),
+        (220, 'product_category'),
+        (221, 'cheaper_product'),
+        (222, 'costliest_product'),
+        (223, 'product_detail'),
+        (224, 'product_price'),
+        (225, 'product_stock'),
+        (226, 'product_compare'),
+        (227, 'product_alternatives'),
+        (228, 'product_advice'),
+        (229, 'recommend_product'),
+        (230, 'add_to_cart'),
+        (231, 'view_cart'),
+        (232, 'show_orders'),
+        (233, 'track_order'),
+        (234, 'cancel_order'),
+        (235, 'weather'),
+        (236, 'general_knowledge'),
+        (237, 'unknown'),
+        (238, 'greeting'),
+        (239, 'assistant_identity'),
+        (240, 'assistant_identity'),
+        (241, 'assistant_about'),
+        (242, 'assistant_identity'),
+        (243, 'clarification'),
+        (244, 'show_products'),
+        (245, 'product_category'),
+        (246, 'cheaper_product'),
+        (247, 'costliest_product'),
+        (248, 'product_detail'),
+        (249, 'product_price'),
+        (250, 'product_stock'),
+        (251, 'product_compare'),
+        (252, 'product_alternatives'),
+        (253, 'product_advice'),
+        (254, 'recommend_product'),
+        (255, 'add_to_cart'),
+        (256, 'view_cart'),
+        (257, 'show_orders'),
+        (258, 'track_order'),
+        (259, 'cancel_order'),
+        (260, 'weather'),
+        (261, 'general_knowledge'),
+        (262, 'unknown')
+)
+UPDATE assistant_training_logs AS logs
+SET actual_intent = labels.actual_intent
+FROM reviewed_labels AS labels
+WHERE logs.id = labels.id
+  AND logs.model_version = 'rule_v4'
+  AND logs.actual_intent IS NULL
+RETURNING
+    logs.id,
+    logs.user_message,
+    logs.predicted_intent,
+    logs.actual_intent,
+    logs.model_version;
+
+```
+
+## **Step 2 — Verify after execution**
+
+Once the update is deliberately executed, run this separate verification query:
+
+```
+
+SELECT
+    COUNT(*) AS total_rule_v4_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NULL
+    ) AS pending_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = 'cancel_order'
+    ) AS cancel_order_records
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4';
+
+```
+
+Expected result if all 82 rows were initially pending and the update succeeds:
+
+| Metric                 | Expected |
+| ---------------------- | -------- |
+| Total records          | 82       |
+| Reviewed records       | 82       |
+| Pending records        | 0        |
+| `cancel_order` records | 2        |
+
+## **Step 3 — Important safeguards**
+
+- The update is restricted to IDs 181–262 and `model_version = 'rule_v4'`.
+- Existing non-NULL labels are not overwritten.
+- Reviewer identity and review timestamps are not fabricated.
+- No model training or deployment happens here.
+- `cancel_order` is now an approved review label, but its support in the application taxonomy and action handler remains separate work.
+
+**My recommendation:** Save this script locally and inspect it first. Don't execute it yet until you've confirmed the mappings match your review decisions.
+
+After that, share the SQL execution result with me. We'll verify the database counts before moving to dataset preparation and our first ML baseline. 💪
+
+
+

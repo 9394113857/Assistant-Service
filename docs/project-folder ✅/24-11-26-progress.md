@@ -3781,6 +3781,8 @@ RETURNING
 
 Expected: 10 updated rows.
 
+**Important SQL Query:**
+
 ### **SQL 2 — Verify**
 
 ```

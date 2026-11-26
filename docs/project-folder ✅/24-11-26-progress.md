@@ -2006,3 +2006,42 @@ Just run the ID 182 query first, bro. We're almost ready for our first ML traini
 
 
 
+
+==================================================================
+
+Perfect bro! ❤️ ID 182 is clear.
+
+**ID 182 —&#x20;**`Show my orders`**&#x20;→&#x20;**`show_orders`
+
+Approved
+
+That completes our review decisions for all 82 `rule_v4` records!
+
+## **Consolidated review status**
+
+# **82 / 82**
+
+**All records have agreed review labels**
+
+100% review decisions completed in our conversation
+
+**Important distinction:** Supabase still has `actual_intent = NULL` for these records. We have not written any labels to the database.
+
+## **What we've established**
+
+- 82 records reviewed.
+- 72 unique messages in the original export.
+- New proposed intent: `cancel_order`.
+- ID 181 correctly reviewed as `recommend_product`.
+- ID 182 reviewed as `show_orders`.
+- Repeated messages will be handled carefully to avoid train/test leakage.
+
+## **Next step — prepare the review sheet**
+
+I recommend we first generate a complete SQL update script containing all 82 exact ID-to-intent mappings. We can inspect it before executing anything.
+
+One important detail: the new `cancel_order` label will need to be supported by our intent taxonomy before it can be used reliably in the classifier.
+
+**Shall I prepare the complete 82-record SQL review script now, without executing it?**
+
+

@@ -3032,6 +3032,8 @@ My recommendation is to create a deduplicated training view for analysis, withou
 
 For identical normalized messages with the same label, we can retain one representative message for the initial model experiment. Keep the original 82 records for audit and traceability.
 
+**Important SQL Query:**
+
 Before that, let's run one more read-only query to inspect how many examples each class has after deduplication.
 
 ```

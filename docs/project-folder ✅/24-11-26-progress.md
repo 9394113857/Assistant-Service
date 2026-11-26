@@ -1725,3 +1725,80 @@ We'll review the messages and identify their correct `actual_intent` labels. We 
 **Important:** We will preserve the 82 records as a separate evaluation group initially, rather than immediately mixing them into training data. That lets us measure how the new ML model compares with `rule_v4` fairly.
 
 Let's do this slowly, bro. First inspect these 82 messages. 💪
+
+==================================================================
+
+Brooooo! ❤️ I've inspected the complete Supabase output. We have **82&#x20;**`rule_v4`**&#x20;records** to work with.
+
+Good news: most of the commerce and cart predictions look sensible. But we have some important classification gaps to investigate.
+
+## **1. Initial review of rule_v4**
+
+Looks consistent
+
+These examples have reasonable predicted labels:
+
+| User message                                 | Predicted intent   |
+| -------------------------------------------- | ------------------ |
+| Hi, how are you?                             | greeting           |
+| Who are you?                                 | assistant_identity |
+| Show me all available products               | show_products      |
+| Do you have smartphones?                     | product_category   |
+| Add two units of the first laptop to my cart | add_to_cart        |
+| Show all items and quantities in my cart     | view_cart          |
+| Compare these two laptops                    | product_compare    |
+| What is the weather in Hyderabad?            | weather            |
+
+These are preliminary assessments, not confirmed labels.
+
+## **2. Messages requiring special attention**
+
+| User message                                     | Current prediction | Suggested review                     |
+| ------------------------------------------------ | ------------------ | ------------------------------------ |
+| Where is my order right now?                     | show_orders        | track_order                          |
+| What is the current status of my latest order?   | show_orders        | track_order                          |
+| Cancel my latest eligible order                  | show_orders        | Needs a cancellation intent decision |
+| Display my previous purchase history             | unknown            | show_orders                          |
+| What features can I use in this chatbot?         | unknown            | assistant_about                      |
+| Who developed this assistant?                    | unknown            | assistant_identity                   |
+| Explain how artificial intelligence works        | unknown            | general_knowledge                    |
+| Please explain your previous answer more clearly | unknown            | clarification                        |
+
+The cancellation example needs special care: our existing intent list doesn't clearly establish a separate `cancel_order` intent. We should decide whether to introduce it before training.
+
+## **3. One important dataset observation**
+
+The 82 records are not 82 independent customer examples.
+
+They include:
+
+- Repeated messages from the same controlled guest/authenticated test.
+- Older test messages.
+- Repeated phrases such as "Show my orders".
+- Similar messages with slightly different wording.
+
+We'll need to identify duplicates and avoid leakage between training and testing.
+
+## **4. Today's next task — establish the review labels**
+
+Before changing any records, let's inspect the existing intent distribution specifically for `rule_v4`.
+
+Run this read-only query:
+
+```
+SELECT
+    predicted_intent,
+    COUNT(*) AS total_records,
+    COUNT(DISTINCT user_message) AS unique_messages,
+    ROUND(AVG(confidence_score)::numeric, 3) AS avg_confidence
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+GROUP BY predicted_intent
+ORDER BY total_records DESC;
+```
+
+Share the result, bro.
+
+Then we'll prepare a reviewed-label sheet for these 82 records. We won't update Supabase labels automatically or train on unreviewed predictions.
+
+**Our goal today: build a trustworthy dataset first, then train our first ML model.** 💪

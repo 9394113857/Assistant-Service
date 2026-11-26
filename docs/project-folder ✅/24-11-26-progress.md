@@ -2408,3 +2408,140 @@ My suggestion: next, let's generate the **intent-wise distribution report for al
 
 
 
+
+
+==================================================================
+
+Brooooo! 🔥 Let's start! We have reached an important stage: **understanding our labelled dataset before training the first ML model.**
+
+I used the 82 approved `actual_intent` labels from your Supabase results to prepare the initial intent-wise distribution.
+
+# **82**
+
+**Reviewed records**
+
+Intent classes
+
+**23**
+
+Pending reviews
+
+**0**
+
+Unique messages in original export
+
+**72**
+
+## **1. Intent-wise distribution report**
+
+Sorted from highest to lowest number of reviewed records. Percentages are out of 82.
+
+| Actual intent          | Records | Distribution |
+| ---------------------- | ------- | ------------ |
+| `show_orders`          | 8       | 9.76%        |
+| `assistant_identity`   | 7       | 8.54%        |
+| `unknown`              | 7       | 8.54%        |
+| `add_to_cart`          | 5       | 6.10%        |
+| `greeting`             | 4       | 4.88%        |
+| `recommend_product`    | 4       | 4.88%        |
+| `show_products`        | 4       | 4.88%        |
+| `assistant_about`      | 3       | 3.66%        |
+| `cheaper_product`      | 3       | 3.66%        |
+| `costliest_product`    | 3       | 3.66%        |
+| `general_knowledge`    | 3       | 3.66%        |
+| `product_alternatives` | 3       | 3.66%        |
+| `product_compare`      | 3       | 3.66%        |
+| `product_detail`       | 3       | 3.66%        |
+| `product_price`        | 3       | 3.66%        |
+| `product_stock`        | 3       | 3.66%        |
+| `view_cart`            | 3       | 3.66%        |
+| `weather`              | 3       | 3.66%        |
+| `cancel_order`         | 2       | 2.44%        |
+| `clarification`        | 2       | 2.44%        |
+| `product_advice`       | 2       | 2.44%        |
+| `product_category`     | 2       | 2.44%        |
+| `track_order`          | 2       | 2.44%        |
+| **Total**              | **82**  | **100%**     |
+
+## **2. What does this report tell us?**
+
+There are three important observations.
+
+**Observation 1 — Some intents have more examples than others.**
+
+- `show_orders` has the most examples: 8.
+- `assistant_identity` and `unknown` have 7 each.
+- `track_order` and `cancel_order` have only 2 each.
+
+**Observation 2 — Our dataset is imbalanced.**
+
+16 out of 23 intent classes have only 3 or fewer records.
+
+That means our first ML model may struggle to learn all 23 classes reliably.
+
+**Observation 3 — We need more real messages.**
+
+We should collect more naturally occurring messages, particularly for less-represented intents, before expecting a reliable production classifier.
+
+## **3. SQL to reproduce this report in Supabase**
+
+Run this query in the Supabase SQL Editor:
+
+```
+
+SELECT
+    actual_intent,
+    COUNT(*) AS total_records,
+    COUNT(DISTINCT user_message) AS unique_messages,
+    ROUND(
+        COUNT(*) * 100.0 /
+        SUM(COUNT(*)) OVER (),
+        2
+    ) AS percentage
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+GROUP BY actual_intent
+ORDER BY total_records DESC, actual_intent ASC;
+
+```
+
+### **What the output columns mean**
+
+| Column            | Explanation                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| `actual_intent`   | Human-approved intent label                                 |
+| `total_records`   | Number of database records for that intent                  |
+| `unique_messages` | Distinct message texts for that intent                      |
+| `percentage`      | Percentage of all reviewed records belonging to that intent |
+
+This query is read-only. It does not change your database.
+
+## **4. Our next ML preparation steps**
+
+1. Completed
+
+   **Human review and intent distribution**
+
+   82 records, 23 intent classes.
+2. Next
+
+   **Prediction accuracy report**
+
+   Compare `predicted_intent` against `actual_intent`. Identify correct and incorrect predictions.
+3. **Duplicate analysis**
+
+   Find repeated messages and avoid train/test data leakage.
+4. **Dataset preparation**
+
+   Prepare text, labels and metadata.
+5. **First ML model**
+
+   TF-IDF + Logistic Regression.
+
+**My recommendation:** Let's do the prediction accuracy report next. Before training a replacement classifier, we should understand exactly where `rule_v4` is failing.
+
+One distinction to keep in mind: this 82-record distribution describes our current reviewed test batch, not necessarily the distribution of all real customer traffic. 💪
+
+
+

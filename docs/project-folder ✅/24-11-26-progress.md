@@ -3334,3 +3334,84 @@ Review the labels before including them in training
 Our goal is not just to increase the row count. It is to teach the model different ways real customers express the same intent. 💪
 
 
+
+
+==================================================================
+
+Perfect bro! 👍 We'll follow this process from now on:
+
+**One batch → You test on website → You share SQL output → We analyse → Next batch.**
+
+No bulk insertion of synthetic labels. We'll verify the actual chatbot predictions first.
+
+## **Batch 1 — Guest&#x20;**`cancel_order`
+
+
+
+10 test messages
+
+user_type: guest
+
+
+
+Open your Angular-Ecommerce website without logging in. Submit these messages one at a time.
+
+| #  | Message to submit                              | Expected intent |
+| -- | ---------------------------------------------- | --------------- |
+| 1  | I want to cancel an order I placed             | `cancel_order`  |
+| 2  | Please stop my order from being processed      | `cancel_order`  |
+| 3  | I don't want the order I just placed           | `cancel_order`  |
+| 4  | Can I withdraw my recent purchase?             | `cancel_order`  |
+| 5  | I ordered the wrong item and want to cancel it | `cancel_order`  |
+| 6  | Please don't send my order                     | `cancel_order`  |
+| 7  | I changed my mind about buying this item       | `cancel_order`  |
+| 8  | Is it possible to call off my recent order?    | `cancel_order`  |
+| 9  | I no longer need the product I ordered         | `cancel_order`  |
+| 10 | How do I request cancellation of an order?     | `cancel_order`  |
+
+**Testing rules:**
+
+- Stay logged out for all 10 messages.
+- Use the same guest session.
+- Submit each message separately.
+- Don't actually cancel any order.
+- These are controlled classification tests, not real customer activity.
+
+## **SQL 1 — Retrieve the latest 10 test records**
+
+After submitting all 10 messages, run this read-only query in Supabase SQL Editor:
+
+```
+SELECT
+    id,
+    user_id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at
+FROM assistant_training_logs
+WHERE created_at >= NOW() - INTERVAL '2 hours'
+  AND (
+      LOWER(user_message) IN (
+          LOWER('I want to cancel an order I placed'),
+          LOWER('Please stop my order from being processed'),
+          LOWER('I don''t want the order I just placed'),
+          LOWER('Can I withdraw my recent purchase?'),
+          LOWER('I ordered the wrong item and want to cancel it'),
+          LOWER('Please don''t send my order'),
+          LOWER('I changed my mind about buying this item'),
+          LOWER('Is it possible to call off my recent order?'),
+          LOWER('I no longer need the product I ordered'),
+          LOWER('How do I request cancellation of an order?')
+      )
+  )
+ORDER BY created_at DESC;
+```
+
+This retrieves matching messages submitted in the last two hours. We will verify that all 10 appear and that the records belong to the guest session. If any are missing, we'll investigate before proceeding.
+
+**Share the query output here, bro.** We'll check predictions, confidence scores, model version and guest identification, then decide the next step.
+
+

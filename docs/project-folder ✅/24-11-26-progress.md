@@ -3493,6 +3493,8 @@ RETURNING
 
 **Expected:** 10 updated records.
 
+**Important SQL Query:**
+
 ## **4. After running, verify the result**
 
 ```

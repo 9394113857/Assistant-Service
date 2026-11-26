@@ -4002,3 +4002,134 @@ Go ahead with the 10 guest tracking messages. Share the SQL output and we'll rev
 
 
 
+
+
+==================================================================
+
+BROOOOO! 😄 Yes! You are absolutely right. We are following a proper **collect → inspect → human review → approve → verify** process. We are not blindly inserting messages or approving labels.
+
+And your latest output is exactly the evidence we need before making any database changes.
+
+## **1. Guest&#x20;**`track_order`**&#x20;— initial prediction analysis**
+
+10 / 10 messages received
+
+All 10 records have `user_id = NULL`, so they came from the guest session.
+
+| Predicted intent    | Count |
+| ------------------- | ----- |
+| `unknown`           | 6     |
+| `show_orders`       | 3     |
+| `general_knowledge` | 1     |
+| `track_order`       | 0     |
+
+**What did&#x20;**`rule_v4`**&#x20;understand?**
+
+- "Has my order been dispatched?" → `show_orders`
+- "Where is my package right now?" → `general_knowledge`
+- "Give me an update about my shipment" → `unknown`
+
+All three are actually asking about delivery tracking.
+
+**Our finding:** The existing classifier does not reliably recognize delivery-related wording as `track_order`.
+
+## **2. Human review — our decision**
+
+I have checked all 10 messages. Their intended meaning is tracking an order or delivery.
+
+Therefore, the proposed human-approved label for all 10 is:
+
+`actual_intent = 'track_order'`
+
+We should preserve the original predictions and only fill the human-reviewed label.
+
+## **3. SQL 1 — Update these 10 reviewed messages**
+
+Run this query:
+
+```
+WITH reviewed_labels(id, actual_intent) AS (
+    VALUES
+        (294, 'track_order'),
+        (295, 'track_order'),
+        (296, 'track_order'),
+        (297, 'track_order'),
+        (298, 'track_order'),
+        (299, 'track_order'),
+        (300, 'track_order'),
+        (301, 'track_order'),
+        (302, 'track_order'),
+        (303, 'track_order')
+)
+UPDATE assistant_training_logs AS logs
+SET actual_intent = labels.actual_intent
+FROM reviewed_labels AS labels
+WHERE logs.id = labels.id
+  AND logs.user_id IS NULL
+  AND logs.model_version = 'rule_v4'
+  AND logs.actual_intent IS NULL
+RETURNING
+    logs.id,
+    logs.user_id,
+    logs.user_message,
+    logs.predicted_intent,
+    logs.actual_intent,
+    logs.model_version;
+```
+
+Expected: 10 updated records.
+
+## **4. SQL 2 — Verify**
+
+After the update, run:
+
+```
+SELECT
+    COUNT(*) AS total_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = 'track_order'
+    ) AS track_order_records
+FROM assistant_training_logs
+WHERE id BETWEEN 294 AND 303
+  AND user_id IS NULL
+  AND model_version = 'rule_v4';
+```
+
+Expected:
+
+| total_records | reviewed_records | track_order_records |
+| ------------- | ---------------- | ------------------- |
+| 10            | 10               | 10                  |
+
+## **5. Our working process from now on**
+
+This is the process we'll consistently follow for every intent.
+
+1. Generate realistic user messages.
+2. Submit them through the actual website.
+3. Retrieve the original predictions from Supabase.
+4. Check user type, duplicate messages, predicted intent and confidence.
+5. Human-review the meaning of every message.
+6. Only then provide the SQL update.
+7. Verify that the correct number of records was updated.
+8. Move to the next batch.
+
+**And one more important rule:** If a message is ambiguous, duplicated, or has an uncertain label, we'll stop and investigate rather than automatically approving it.
+
+## **6. Current collection progress**
+
+Assuming this batch is successfully verified:
+
+| Intent         | Guest new | Authenticated new |
+| -------------- | --------- | ----------------- |
+| `cancel_order` | 10        | 10                |
+| `track_order`  | 10        | Pending           |
+
+Our next batch will be **10 authenticated&#x20;**`track_order`**&#x20;messages**.
+
+First, run the update and verification queries above and share their results, bro. We're building this dataset carefully, not just increasing its size. 💪
+
+

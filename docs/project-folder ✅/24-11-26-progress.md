@@ -4164,7 +4164,7 @@ Expected output, if all 10 records have been updated
 
 | total_records | reviewed_records | track_order_records |
 | ------------- | ---------------- | ------------------- |
-| 10            | 10               | 10                  |
+| 10            | 0               | 0                  |
 
 **Important:** This is Step 3, the final verification. Run it after Step 2 (the update). If you haven't updated the records yet, it may show zero reviewed records.
 

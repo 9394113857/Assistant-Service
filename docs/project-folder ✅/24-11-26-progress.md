@@ -4595,3 +4595,128 @@ We are not training the model yet. We are building and validating the educationa
 
 
 
+==================================================================
+
+Got you, bro! ❤️ You want the **complete three-step workflow together every time**, just like the previous batch. You will execute the SQLs and share the final results. I'll review them and guide the next batch.
+
+# **Authenticated track_order — Batch 2**
+
+10 test messages
+
+## **Step 1 — Submit messages and verify records**
+
+Log in to your Angular Ecommerce website and submit these 10 messages:
+
+1. Track the delivery for my latest purchase.
+2. Can you tell me the current status of order 1052?
+3. Has my package reached the delivery hub?
+4. Please check whether my order is out for delivery.
+5. What is the latest update from the courier?
+6. My order is still pending. Can you check its progress?
+7. Has the delivery agent received my parcel?
+8. When is my shipment expected to reach my address?
+9. Show the tracking progress for my recent order.
+10. Is my package delayed or moving as scheduled?
+
+Then retrieve the records:
+
+```
+SELECT
+    id,
+    user_id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at
+FROM assistant_training_logs
+WHERE created_at >= NOW() - INTERVAL '2 hours'
+  AND user_id IS NOT NULL
+  AND model_version = 'rule_v4'
+  AND user_message IN (
+      'Track the delivery for my latest purchase.',
+      'Can you tell me the current status of order 1052?',
+      'Has my package reached the delivery hub?',
+      'Please check whether my order is out for delivery.',
+      'What is the latest update from the courier?',
+      'My order is still pending. Can you check its progress?',
+      'Has the delivery agent received my parcel?',
+      'When is my shipment expected to reach my address?',
+      'Show the tracking progress for my recent order.',
+      'Is my package delayed or moving as scheduled?'
+  )
+ORDER BY created_at DESC;
+```
+
+**Check:** 10 correct messages, authenticated `user_id`, `rule_v4`, and `actual_intent` still NULL. Also check for duplicates before labelling.
+
+## **Step 2 — Update human-approved labels**
+
+Once the retrieved messages are confirmed and all 10 are genuinely tracking requests, run:
+
+```
+WITH reviewed_labels(id, actual_intent) AS (
+    VALUES
+        -- Replace these IDs with the actual IDs from Step 1
+        (0, 'track_order')
+)
+UPDATE assistant_training_logs AS logs
+SET actual_intent = labels.actual_intent
+FROM reviewed_labels AS labels
+WHERE logs.id = labels.id
+  AND logs.user_id IS NOT NULL
+  AND logs.model_version = 'rule_v4'
+  AND logs.actual_intent IS NULL
+RETURNING
+    logs.id,
+    logs.user_id,
+    logs.user_message,
+    logs.predicted_intent,
+    logs.actual_intent,
+    logs.model_version;
+```
+
+**Important:** This is a template. Replace the placeholder `(0, 'track_order')` with all 10 actual ID/label pairs from Step 1. Don't run it with the placeholder.
+
+Why? We only want to update the exact records we inspected and approved.
+
+## **Step 3 — Final verification**
+
+After Step 2, use the actual ID range returned by Step 1:
+
+```
+SELECT
+    COUNT(*) AS total_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = 'track_order'
+    ) AS track_order_records
+FROM assistant_training_logs
+WHERE id BETWEEN YOUR_FIRST_ID AND YOUR_LAST_ID
+  AND user_id IS NOT NULL
+  AND model_version = 'rule_v4';
+```
+
+Expected:
+
+| total_records | reviewed_records | track_order_records |
+| ------------- | ---------------- | ------------------- |
+| 10            | 10               | 10                  |
+
+Replace `YOUR_FIRST_ID` and `YOUR_LAST_ID` with the actual IDs.
+
+## **What we're achieving**
+
+We are adding more human-labelled examples to our supervised ML dataset.
+
+- Guest messages teach us how guests express tracking requests.
+- Authenticated messages teach us how logged-in customers express tracking requests.
+- `predicted_intent` helps evaluate the old classifier.
+- `actual_intent` provides the human-approved training label.
+
+**Our next action:** Complete these three stages and share the results, bro. I'll verify them and then calculate our updated `track_order` dataset count before moving forward. 💪
+
+

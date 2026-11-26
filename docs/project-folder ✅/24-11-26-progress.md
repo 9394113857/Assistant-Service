@@ -3951,6 +3951,8 @@ Don't perform any actual order operation. These are classification tests.
 
 ## **5. SQL — retrieve the 10 guest messages**
 
+**Important SQL Query:**
+
 After submitting all 10, execute:
 
 ```

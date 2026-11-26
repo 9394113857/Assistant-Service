@@ -4597,77 +4597,74 @@ We are not training the model yet. We are building and validating the educationa
 
 ==================================================================
 
-**Again Same flow Important Topic:**
-
-Got you, bro! ❤️ You want the **complete three-step workflow together every time**, just like the previous batch. You will execute the SQLs and share the final results. I'll review them and guide the next batch.
+Got you, bro! ❤️ I've filled in the actual results from Supabase. Our authenticated `track_order` batch is **IDs 304–313**, belonging to user ID `16`.
 
 # **Authenticated track_order — Batch 2**
 
-10 test messages
+10 records retrieved and checked
 
-## **Step 1 — Submit messages and verify records**
+## **Step 1 — Retrieve and verify records**
 
-Log in to your Angular Ecommerce website and submit these 10 messages:
+We submitted all 10 messages through the authenticated chatbot and retrieved these results.
 
-1. Track the delivery for my latest purchase.
-2. Can you tell me the current status of order 1052?
-3. Has my package reached the delivery hub?
-4. Please check whether my order is out for delivery.
-5. What is the latest update from the courier?
-6. My order is still pending. Can you check its progress?
-7. Has the delivery agent received my parcel?
-8. When is my shipment expected to reach my address?
-9. Show the tracking progress for my recent order.
-10. Is my package delayed or moving as scheduled?
+| ID  | User message (shortened)                   | Predicted intent | Confidence |
+| --- | ------------------------------------------ | ---------------- | ---------- |
+| 304 | Track the delivery for my latest purchase  | track_order      | 0.92       |
+| 305 | Current status of order 1052               | show_orders      | 0.92       |
+| 306 | Package reached the delivery hub?          | unknown          | 0          |
+| 307 | Order out for delivery?                    | show_orders      | 0.92       |
+| 308 | Latest update from the courier?            | cheaper_product  | 0.92       |
+| 309 | Order pending; check its progress          | show_orders      | 0.92       |
+| 310 | Delivery agent received my parcel?         | unknown          | 0          |
+| 311 | Shipment expected to reach my address?     | unknown          | 0          |
+| 312 | Show tracking progress for my recent order | track_order      | 0.92       |
+| 313 | Package delayed or moving as scheduled?    | unknown          | 0          |
 
-Then retrieve the records:
+**Verification findings:**
 
-```
-SELECT
-    id,
-    user_id,
-    user_message,
-    predicted_intent,
-    confidence_score,
-    actual_intent,
-    model_version,
-    created_at
-FROM assistant_training_logs
-WHERE created_at >= NOW() - INTERVAL '2 hours'
-  AND user_id IS NOT NULL
-  AND model_version = 'rule_v4'
-  AND user_message IN (
-      'Track the delivery for my latest purchase.',
-      'Can you tell me the current status of order 1052?',
-      'Has my package reached the delivery hub?',
-      'Please check whether my order is out for delivery.',
-      'What is the latest update from the courier?',
-      'My order is still pending. Can you check its progress?',
-      'Has the delivery agent received my parcel?',
-      'When is my shipment expected to reach my address?',
-      'Show the tracking progress for my recent order.',
-      'Is my package delayed or moving as scheduled?'
-  )
-ORDER BY created_at DESC;
-```
+- 10 records retrieved.
+- All have `user_id = 16` (authenticated).
+- All have `model_version = rule_v4`.
+- All have `actual_intent = NULL` (pending review).
+- All 10 messages express the intent `track_order`.
 
-**Check:** 10 correct messages, authenticated `user_id`, `rule_v4`, and `actual_intent` still NULL. Also check for duplicates before labelling.
+Prediction distribution:
+
+| Predicted intent | Count  |
+| ---------------- | ------ |
+| unknown          | 4      |
+| show_orders      | 3      |
+| track_order      | 2      |
+| cheaper_product  | 1      |
+| **Total**        | **10** |
+
+This shows where our existing classifier struggles. In particular, the `cheaper_product` prediction for a courier update is clearly incorrect.
 
 ## **Step 2 — Update human-approved labels**
 
-Once the retrieved messages are confirmed and all 10 are genuinely tracking requests, run:
+We reviewed all 10 messages. Their correct intent is `track_order`.
+
+Run this SQL:
 
 ```
 WITH reviewed_labels(id, actual_intent) AS (
     VALUES
-        -- Replace these IDs with the actual IDs from Step 1
-        (0, 'track_order')
+        (304, 'track_order'),
+        (305, 'track_order'),
+        (306, 'track_order'),
+        (307, 'track_order'),
+        (308, 'track_order'),
+        (309, 'track_order'),
+        (310, 'track_order'),
+        (311, 'track_order'),
+        (312, 'track_order'),
+        (313, 'track_order')
 )
 UPDATE assistant_training_logs AS logs
 SET actual_intent = labels.actual_intent
 FROM reviewed_labels AS labels
 WHERE logs.id = labels.id
-  AND logs.user_id IS NOT NULL
+  AND logs.user_id = 16
   AND logs.model_version = 'rule_v4'
   AND logs.actual_intent IS NULL
 RETURNING
@@ -4679,13 +4676,11 @@ RETURNING
     logs.model_version;
 ```
 
-**Important:** This is a template. Replace the placeholder `(0, 'track_order')` with all 10 actual ID/label pairs from Step 1. Don't run it with the placeholder.
-
-Why? We only want to update the exact records we inspected and approved.
+**Expected:** 10 returned rows, all with `actual_intent = track_order`.
 
 ## **Step 3 — Final verification**
 
-After Step 2, use the actual ID range returned by Step 1:
+After Step 2, run:
 
 ```
 SELECT
@@ -4697,28 +4692,31 @@ SELECT
         WHERE actual_intent = 'track_order'
     ) AS track_order_records
 FROM assistant_training_logs
-WHERE id BETWEEN YOUR_FIRST_ID AND YOUR_LAST_ID
-  AND user_id IS NOT NULL
+WHERE id BETWEEN 304 AND 313
+  AND user_id = 16
   AND model_version = 'rule_v4';
 ```
 
-Expected:
+Expected result:
 
 | total_records | reviewed_records | track_order_records |
 | ------------- | ---------------- | ------------------- |
 | 10            | 10               | 10                  |
 
-Replace `YOUR_FIRST_ID` and `YOUR_LAST_ID` with the actual IDs.
+## **What we have achieved**
 
-## **What we're achieving**
+Our `track_order` collection now has these batches:
 
-We are adding more human-labelled examples to our supervised ML dataset.
+| Source                     | Previously reviewed | Newly reviewed |
+| -------------------------- | ------------------- | -------------- |
+| Original rule_v4 data      | 2                   | —              |
+| Guest test batch           | —                   | 10             |
+| Authenticated test batch 1 | —                   | 10             |
 
-- Guest messages teach us how guests express tracking requests.
-- Authenticated messages teach us how logged-in customers express tracking requests.
-- `predicted_intent` helps evaluate the old classifier.
-- `actual_intent` provides the human-approved training label.
+22 expected reviewed records
 
-**Our next action:** Complete these three stages and share the results, bro. I'll verify them and then calculate our updated `track_order` dataset count before moving forward. 💪
+Once this verification succeeds, we will have 22 labelled `track_order` records in total, before checking for duplicate messages.
+
+**Our next step:** Complete Step 2 and Step 3, share the results, and then we'll inspect the updated dataset distribution. 💪&#x20;
 
 

@@ -3663,6 +3663,8 @@ We'll now log in to your website using your test account and submit these 10 mes
 
 Use your authenticated test account. Don't actually cancel any order.
 
+**Important SQL Query**
+
 After submitting all 10, run this SQL query:
 
 ```

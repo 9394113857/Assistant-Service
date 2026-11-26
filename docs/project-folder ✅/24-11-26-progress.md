@@ -4722,3 +4722,44 @@ Once this verification succeeds, we will have 22 labelled `track_order` records 
 **Our next step:** Complete Step 2 and Step 3, share the results, and then we'll inspect the updated dataset distribution. 💪&#x20;
 
 
+
+
+==================================================================
+
+**Important Topic Checking intents and classes Overall:**
+
+Super brooo! 🔥 Authenticated `track_order` batch completed successfully.
+
+10 / 10 verified
+
+Our reviewed `track_order` count is now **22 records** before duplicate checking.
+
+# **Next: What shall we strengthen?**
+
+Let's collect another 10 messages for `cancel_order`**&#x20;— guest users** to continue improving that intent.
+
+But first, our previous guest and authenticated `cancel_order` batches already contributed 20 records. So I recommend moving to the next important task: **dataset quality and duplicate analysis** before collecting more examples.
+
+### **Next SQL — Check reviewed intent distribution**
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages
+FROM assistant_training_logs
+WHERE actual_intent IS NOT NULL
+  AND model_version = 'rule_v4'
+GROUP BY actual_intent
+ORDER BY actual_intent;
+```
+
+**Why this next?** We need to see how many reviewed examples each intent has and how many unique messages they contain. This helps identify weak classes and avoid collecting unnecessary duplicates.
+
+Share the output, bro. We'll decide the next batch based on actual dataset numbers. 💪
+
+
+
+
+
+

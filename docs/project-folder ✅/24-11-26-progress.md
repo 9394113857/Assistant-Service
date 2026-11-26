@@ -2711,6 +2711,137 @@ That's an illustration, not an assumed result.
 
 Share the SQL output, bro. Then we'll analyse all 14 mistakes together. 💪
 
+==================================================================
+
+Brooooo! 🔥 Now we have identified the actual weaknesses of `rule_v4`.
+
+This is exactly the analysis we needed before developing our ML classifier.
+
+Your query found **all 14 incorrect predictions**, grouped into 11 confusion patterns.
+
+## **1. Classification mistake analysis**
+
+**Where are the 14 mistakes coming from?**
+
+**Order-related confusion**
+
+**4/14**
+
+cancel_order (2), track_order (2)
+
+**Unknown intent confusion**
+
+**6/14**
+
+Identity, orders, clarification, general knowledge, assistant features
+
+**Product-related confusion**
+
+**3/14**
+
+Product detail, stock, recommendation
+
+**Price confusion**
+
+**1/14**
+
+product_price
+
+## **2. What did we learn?**
+
+### **A. Order-related classification needs improvement**
+
+| User message                                   | Predicted   | Correct label |
+| ---------------------------------------------- | ----------- | ------------- |
+| I want to cancel my previous order             | show_orders | cancel_order  |
+| Cancel my latest eligible order                | show_orders | cancel_order  |
+| Where is my order right now?                   | show_orders | track_order   |
+| What is the current status of my latest order? | show_orders | track_order   |
+
+Our existing rules recognize the word `order`, but do not sufficiently distinguish the user's intended action.
+
+### **B. Unknown is catching valid messages**
+
+Examples:
+
+- Who developed this assistant?
+- Display my previous purchase history.
+- Please explain your previous answer more clearly.
+- Explain how artificial intelligence works.
+- What features can I use in this chatbot?
+
+These messages need better intent recognition.
+
+### **C. Product classification needs more context**
+
+Examples:
+
+- "Tell me about this product" → `product_detail`
+- "Is this product available?" → `product_stock`
+- "Can you recommend a good smartphone for photography?" → `recommend_product`
+
+The classifier is sometimes identifying the general product topic instead of the user's specific request.
+
+## **3. What should we improve?**
+
+| Area               | Improvement direction                                         |
+| ------------------ | ------------------------------------------------------------- |
+| Orders             | Separate viewing, tracking and cancellation                   |
+| Assistant identity | Recognize developed, created and built                        |
+| Assistant features | Improve capability-related phrases                            |
+| Clarification      | Recognize requests to explain previous answers                |
+| Products           | Distinguish details, stock, recommendations                   |
+| Pricing            | Recognize price questions even without explicit product names |
+
+These are proposed improvement areas, not code changes yet.
+
+## **4. Next step — Per-intent performance report**
+
+Now let's find out which intent classes have the most difficulty.
+
+Run this SQL in Supabase:
+
+```
+
+SELECT
+    actual_intent,
+    COUNT(*) AS total_records,
+
+    COUNT(*) FILTER (
+        WHERE predicted_intent = actual_intent
+    ) AS correct_predictions,
+
+    COUNT(*) FILTER (
+        WHERE predicted_intent IS DISTINCT FROM actual_intent
+    ) AS incorrect_predictions,
+
+    ROUND(
+        COUNT(*) FILTER (
+            WHERE predicted_intent = actual_intent
+        ) * 100.0 / COUNT(*),
+        2
+    ) AS recall_percentage
+
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+
+GROUP BY actual_intent
+ORDER BY recall_percentage ASC, total_records ASC;
+
+```
+
+**What is recall here?**
+
+Recall measures how many messages belonging to a particular actual intent were correctly identified.
+
+For example, if `cancel_order` has 2 records and 0 correct predictions, its recall is 0%.
+
+This is useful because we don't want to hide poorly recognized intents behind one overall accuracy score.
+
+**Our current baseline is 82.93%.** Next we'll understand performance class by class, then prepare the ML dataset. No code changes or deployment yet, bro. 💪
+
+
 
 
 

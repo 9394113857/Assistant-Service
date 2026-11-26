@@ -3415,3 +3415,104 @@ This retrieves matching messages submitted in the last two hours. We will verify
 **Share the query output here, bro.** We'll check predictions, confidence scores, model version and guest identification, then decide the next step.
 
 
+
+
+==================================================================
+
+Bro, excellent! We have our first guest cancellation test results. And we've found an important weakness in `rule_v4`. 💪
+
+## **1. What happened?**
+
+Your query returned **21 rows instead of 10**. It looks like the 10-message batch was submitted twice, with one additional duplicate submission of:
+
+`Can I withdraw my recent purchase?`
+
+The first batch is IDs **263–272**. Let's use those 10 as our first controlled batch and keep the later submissions separate so duplicate tests don't inflate our dataset.
+
+0 of 10 predicted correctly
+
+### **First batch: IDs 263–272**
+
+| Predicted intent | Count | What it tells us                                                  |
+| ---------------- | ----- | ----------------------------------------------------------------- |
+| `show_orders`    | 6     | The classifier sees order-related words and assumes order history |
+| `unknown`        | 3     | It doesn't recognize the cancellation wording                     |
+| `show_products`  | 1     | It interprets product-related wording as product browsing         |
+| `cancel_order`   | 0     | Cancellation is not recognized                                    |
+
+All 10 records have `user_id = NULL`, confirming they were guest requests.
+
+The `0.92` confidence for `show_orders` does not mean the prediction is correct. It means the existing rule classifier assigned that confidence to its incorrect prediction.
+
+## **2. What are we learning?**
+
+Consider these examples:
+
+- "I want to cancel an order I placed" → `show_orders`
+- "Please stop my order from being processed" → `show_orders`
+- "I no longer need the product I ordered" → `show_products`
+
+Our current rules recognize words like `order` and `product`, but don't reliably understand the customer's intended action.
+
+This is exactly why we are collecting reviewed examples before improving the classifier.
+
+## **3. SQL — approve the first 10 labels**
+
+Our human review confirms all 10 messages express cancellation intent. Let's label only IDs 263–272 as `cancel_order`.
+
+This query does not change the original messages or predictions.
+
+```
+WITH reviewed_labels(id, actual_intent) AS (
+    VALUES
+        (263, 'cancel_order'),
+        (264, 'cancel_order'),
+        (265, 'cancel_order'),
+        (266, 'cancel_order'),
+        (267, 'cancel_order'),
+        (268, 'cancel_order'),
+        (269, 'cancel_order'),
+        (270, 'cancel_order'),
+        (271, 'cancel_order'),
+        (272, 'cancel_order')
+)
+UPDATE assistant_training_logs AS logs
+SET actual_intent = labels.actual_intent
+FROM reviewed_labels AS labels
+WHERE logs.id = labels.id
+  AND logs.user_id IS NULL
+  AND logs.model_version = 'rule_v4'
+  AND logs.actual_intent IS NULL
+RETURNING
+    logs.id,
+    logs.user_message,
+    logs.predicted_intent,
+    logs.actual_intent,
+    logs.model_version;
+```
+
+**Expected:** 10 updated records.
+
+## **4. After running, verify the result**
+
+```
+SELECT
+    COUNT(*) AS total_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = 'cancel_order'
+    ) AS cancel_order_records
+FROM assistant_training_logs
+WHERE id BETWEEN 263 AND 272
+  AND model_version = 'rule_v4';
+```
+
+Share the output with me.
+
+**Our next step:** Once these 10 are confirmed, we'll move to the 10 authenticated `cancel_order` messages. We won't modify the classifier yet. First, we want enough reviewed examples to understand the problem and build a useful training dataset. 💪
+
+
+
+

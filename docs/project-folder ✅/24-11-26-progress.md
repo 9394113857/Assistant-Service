@@ -2639,3 +2639,78 @@ For example:
 This is called a **confusion analysis**.
 
 **Run the accuracy SQL first and share the four values here, bro.** We'll take the next step based on your actual results. 💪
+
+==================================================================
+
+Brooooo! 🔥 This is a very good result for our first `rule_v4` evaluation!
+
+Baseline evaluation completed
+
+# **82.93%**
+
+**rule_v4 accuracy on the reviewed 82-record batch**
+
+# **68**
+
+Correct predictions
+
+# **14**
+
+Incorrect predictions
+
+### **What does 82.93% mean?**
+
+Out of 82 reviewed messages:
+
+- 68 were correctly classified by `rule_v4`.
+- 14 were classified incorrectly.
+- Approximately 17.07% were incorrect.
+
+\\[ Accuracy = \frac{68}{82}\times100 = 82.93\\% \\]
+
+This is our current baseline, not proof of production accuracy. The dataset includes repeated and controlled test messages.
+
+## **Next step — Find the 14 classification mistakes**
+
+Now we need to understand *why* `rule_v4` got those 14 messages wrong.
+
+Run this SQL in Supabase:
+
+```
+
+SELECT
+    predicted_intent,
+    actual_intent,
+    COUNT(*) AS mistake_count,
+    ARRAY_AGG(user_message ORDER BY id) AS example_messages
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+  AND predicted_intent IS DISTINCT FROM actual_intent
+GROUP BY
+    predicted_intent,
+    actual_intent
+ORDER BY mistake_count DESC, predicted_intent;
+
+```
+
+### **What will this report show?**
+
+| Column             | Meaning                                 |
+| ------------------ | --------------------------------------- |
+| `predicted_intent` | What rule_v4 predicted                  |
+| `actual_intent`    | Our approved human label                |
+| `mistake_count`    | Number of times this confusion happened |
+| `example_messages` | Actual messages behind the mistakes     |
+
+For example, we might discover that `show_orders` was repeatedly predicted instead of `track_order`.
+
+That's an illustration, not an assumed result.
+
+**Why this step matters:** We don't just want a new ML model. We want to understand the weaknesses of our existing classifier and see whether ML can improve them.
+
+Share the SQL output, bro. Then we'll analyse all 14 mistakes together. 💪
+
+
+
+

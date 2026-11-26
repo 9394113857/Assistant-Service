@@ -2799,7 +2799,7 @@ These are proposed improvement areas, not code changes yet.
 
 Now let's find out which intent classes have the most difficulty.
 
-** Important SQL Query: **
+**Important SQL Query:**
 Run this SQL in Supabase:
 
 ```

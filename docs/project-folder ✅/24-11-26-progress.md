@@ -1802,3 +1802,97 @@ Share the result, bro.
 Then we'll prepare a reviewed-label sheet for these 82 records. We won't update Supabase labels automatically or train on unreviewed predictions.
 
 **Our goal today: build a trustworthy dataset first, then train our first ML model.** 💪
+==================================================================
+
+
+Broooo! 🔥 Now we're getting closer to our first ML training dataset!
+
+This distribution tells us something important: `rule_v4` has a broad range of intents, but some categories have very few examples.
+
+## **1. Rule_v4 intent distribution**
+
+# **81**
+
+Records in the distribution
+
+# **71**
+
+Sum of unique messages per intent
+
+**Largest predicted classes**
+
+unknown
+
+13
+
+show_orders
+
+11
+
+add_to_cart
+
+5
+
+assistant_identity
+
+5
+
+product_category
+
+5
+
+show_products
+
+4
+
+## **2. Three important observations**
+
+**A. Unknown is the largest category**
+
+13 messages are classified as `unknown`. We need to review whether these are genuinely unknown or should belong to other intents such as `assistant_about`, `general_knowledge` or `clarification`.
+
+**B. Show_orders has repeated messages**
+
+- 11 records
+- 6 unique messages
+
+This means repeated messages exist. We'll investigate duplicates before training.
+
+**C. Many intents have only 1–3 examples**
+
+For example:
+
+- `clarification`: 1
+- `product_detail`: 2
+- `product_stock`: 2
+- `product_advice`: 2
+
+These are not enough to train and evaluate those classes reliably.
+
+## **3. Important discrepancy to resolve first**
+
+Our previous query reported **82 rule_v4 records**, but the new intent distribution adds up to **81 records**.
+
+Let's verify before we prepare labels.
+
+Run this SQL:
+
+```
+SELECT
+    COUNT(*) AS total_rule_v4_records,
+    COUNT(DISTINCT user_message) AS unique_messages,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NULL
+    ) AS pending_review,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4';
+```
+
+Share the output, bro.
+
+**Why are we checking this?** We want an exact, reliable dataset count before labeling and training. No assumptions, no accidental missing records.
+
+After this, we'll start reviewing the actual messages and their correct intent labels. ❤️

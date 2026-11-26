@@ -1613,4 +1613,50 @@ Integrate only after validation
 
 Bro, tomorrow we don't need to rush. First SQL query, then dataset preparation, then our first ML model. Small steps, real progress. ❤️
 
+==================================================================
+
+Good morning brooooo! 😃☕❤️ Welcome back!
+
+Let's continue exactly where we stopped yesterday. Today we'll start preparing our **new ML intent classifier** for Assistant-Service.
+
+No code changes, no database changes, and no deployment yet. First, let's establish our current `rule_v4` baseline.
+
+## **Step 1 — Run this SQL query in Supabase**
+
+```
+SELECT
+    model_version,
+    COUNT(*) AS total_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NULL
+    ) AS pending_records,
+    COUNT(*) FILTER (
+        WHERE actual_intent = predicted_intent
+    ) AS correct_predictions,
+    COUNT(*) FILTER (
+        WHERE actual_intent <> predicted_intent
+    ) AS incorrect_predictions
+FROM assistant_training_logs
+GROUP BY model_version
+ORDER BY model_version;
+```
+
+**Why first?**
+
+We need to know:
+
+- How many records belong to `rule_v4`?
+- How many have been reviewed?
+- How many predictions were correct?
+- How many are still pending?
+
+Then we'll calculate the baseline accuracy and decide how to prepare the training dataset.
+
+Share the SQL output here, bro. We'll take just this one step first! 💪
+
+
+
 

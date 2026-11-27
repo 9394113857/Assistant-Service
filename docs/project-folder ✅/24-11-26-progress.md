@@ -5586,3 +5586,41 @@ S.No.	Message
 After submitting, send me the retrieved IDs. I'll give you the three SQL stages again.
 
 One important distinction: 10 unique messages per intent is our initial collection target, not proof that the model is production-ready. We'll still perform quality checks before training. 🚀
+
+
+==================================================================
+
+Let's goooo bro! 😂🔥
+
+### **Batch 3 –&#x20;**`show_orders`
+
+**Step 1/3: Retrieve and verify**
+
+Run this SQL:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at,
+    user_id
+FROM public.assistant_training_logs
+WHERE LOWER(TRIM(user_message)) IN (
+    LOWER('Show me my previous purchases.'),
+    LOWER('Can you display my order history?'),
+    LOWER('What orders have I placed so far?'),
+    LOWER('List all my recent orders.'),
+    LOWER('I want to see the orders linked to my account.'),
+    LOWER('Display my purchase history, please.'),
+    LOWER('Which products have I ordered before?')
+)
+ORDER BY created_at DESC;
+```
+
+Paste the results here, bro.
+
+Then I'll prepare the update SQL and final verification SQL using the actual IDs. **Don't update labels yet!** 😎

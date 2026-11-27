@@ -4802,3 +4802,61 @@ Run it and share the output, bro. Then we'll decide the next step. 💪
 
 
 
+==================================================================
+
+Excellent brooo! 🔥 Our duplicate analysis found **17 repeated records across 6 message groups**.
+
+The good news:&#x20;
+
+No conflicting labels
+
+&#x20;All six duplicate groups have consistent intent labels.
+
+
+
+### **Step 1 results**
+
+| # | Repeated message               | Records | Intent             | Decision        |
+| - | ------------------------------ | ------- | ------------------ | --------------- |
+| 1 | show my orders                 | 6       | show_orders        | Duplicate group |
+| 2 | show me all available products | 3       | show_products      | Duplicate group |
+| 3 | add this product to my cart    | 2       | add_to_cart        | Duplicate group |
+| 4 | hi                             | 2       | greeting           | Duplicate group |
+| 5 | who are you?                   | 2       | assistant_identity | Duplicate group |
+| 6 | who created you                | 2       | assistant_identity | Duplicate group |
+
+**What this means:** We have 17 rows in these groups, but only 6 distinct message variations. For model training, repeated copies should not be treated as independent examples. We'll preserve all database rows for audit and handle duplicates during dataset preparation.
+
+Small clarification: those groups contain **17 rows total**, of which **11 are extra duplicate copies**.
+
+### **Step 2 – Check pending and empty records**
+
+Now let's verify whether any records still need review or contain empty messages.
+
+```
+
+SELECT
+    COUNT(*) AS total_records,
+
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NOT NULL
+    ) AS reviewed_records,
+
+    COUNT(*) FILTER (
+        WHERE actual_intent IS NULL
+    ) AS pending_records,
+
+    COUNT(*) FILTER (
+        WHERE user_message IS NULL
+           OR TRIM(user_message) = ''
+    ) AS empty_messages
+
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4';
+
+```
+
+**What we're checking:** Are all records reviewed? Are any messages blank?
+
+Run this and share the output. Then we'll check label consistency. 💪
+

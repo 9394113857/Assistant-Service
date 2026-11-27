@@ -6180,3 +6180,71 @@ We expect six duplicate records across the selected classes, with no conflicting
 After you share this result, we'll finish the database audit and move to reviewing the two feature-branch PRs before the first controlled training run.
 
 No database changes needed now, bro! 🚀
+
+
+==================================================================
+
+BROOOOO! 🔥 This confirms our final exact-duplicate check passed.
+
+### **1. Final duplicate audit**
+
+Zero exact-label conflicts
+
+| Duplicate message             | Records | Extra duplicates | Labels            |
+| ----------------------------- | ------- | ---------------- | ----------------- |
+| `show my orders`              | 6       | 5                | All `show_orders` |
+| `add this product to my cart` | 2       | 1                | All `add_to_cart` |
+| **Total**                     | **8**   | **6**            | **No conflicts**  |
+
+The other duplicate groups we saw earlier belonged to `rule_v1`, `rule_v2`, or `rule_v3`, so they don't create duplicates in this five-intent `rule_v4` dataset.
+
+### **2. Database audit summary**
+
+| Check                                               | Result |
+| --------------------------------------------------- | ------ |
+| Reviewed `rule_v4` records in five intents          | 80     |
+| Unique normalized messages                          | 74     |
+| Exact duplicate records excluded during preparation | 6      |
+| Pending exact duplicates                            | 6      |
+| Empty messages                                      | 0      |
+| Conflicting exact duplicate labels                  | 0      |
+| Minimum unique messages per class                   | 10     |
+
+**Database decision:** No more SQL updates or deletions are needed for these records.
+
+### **3. One important code-review finding — stop before training**
+
+I inspected the ML pipeline feature branch. There is a **critical scope mismatch** in `train.py`.
+
+Our agreed dataset is restricted to `model_version = 'rule_v4'`, but the current training SQL filters only by `actual_intent`. It does **not** filter by `model_version`.
+
+That means the training workflow could pull eligible labels from `rule_v1`, `rule_v2`, and `rule_v3` as well.
+
+This must be fixed before the first training run. Our confirmed 74 unique messages would otherwise not necessarily be the dataset the model actually receives.
+
+### **4. I patched the ML pipeline feature branch**
+
+Committed
+
+- Repository: `assistant-ml-pipeline`
+- Branch: `feature/ml-five-intent-scope`
+- File: `train.py`
+- Commit: `22ed0ba9`
+- Change: Training SQL now explicitly filters `model_version = 'rule_v4'`.
+- Supabase remains read-only.
+
+PR #6: [Review the ML pipeline changes](https://github.com/9394113857/assistant-ml-pipeline/pull/6?utm_source=chatgpt.com)
+
+The new commit still needs CI verification. **No training, merging, or production deployment has happened.**
+
+### **5. One decision before merging Assistant-Service PR #11**
+
+I noticed its administrator review API currently accepts only the five selected labels.
+
+That does not remove the other 18 rule-based chatbot intents, but it prevents administrators from assigning new human-reviewed labels to those 18 through that API.
+
+**Do you want the review API to continue accepting all 23 intents, while the ML pipeline trains only on five?**
+
+My recommendation is **yes**. That keeps the broader chatbot and future training-data collection flexible.
+
+After that decision, we'll finish the PR reviews and prepare the first controlled training run. 🚀

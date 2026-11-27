@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from app.extensions import db
 from app.models.assistant_training_log import AssistantTrainingLog
 from app.services.assistant_orchestrator import process_user_message
-from app.services.intent_registry import INTENT_HANDLER_MAP
+from app.services.ml_intent_scope import INITIAL_ML_INTENTS
 
 assistant_bp = Blueprint("assistant", __name__)
 
@@ -109,10 +109,10 @@ def review_training_record(reviewer_id, record_id):
         return jsonify({"error": "actual_intent is required"}), 400
 
     actual_intent = actual_intent.strip().lower()
-    if actual_intent not in INTENT_HANDLER_MAP:
+    if actual_intent not in INITIAL_ML_INTENTS:
         return jsonify({
             "error": "Unsupported intent",
-            "allowed_intents": sorted(INTENT_HANDLER_MAP.keys()),
+            "allowed_intents": sorted(INITIAL_ML_INTENTS),
         }), 400
 
     record = db.session.get(AssistantTrainingLog, record_id)

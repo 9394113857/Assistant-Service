@@ -16,7 +16,7 @@ The first supervised ML classifier is deliberately limited to five ecommerce int
 
 ## Data requirements
 
-- Use only non-empty, human-reviewed `actual_intent` labels.
+- The administrator review API accepts only these five labels for new reviews.\n- Use only non-empty, human-reviewed `actual_intent` labels.
 - Ignore all labels outside the five-intent allowlist for this first model.
 - Preserve all historical Supabase records; do not delete the other 18 intent classes.
 - Require at least 10 unique normalized messages for each approved intent.

@@ -79,6 +79,24 @@ class TrainingReviewRouteTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_review_rejects_intents_outside_initial_ml_scope(self):
+        response = self.client.post(
+            f"/api/v1/assistant/training/{self.record_id}/review",
+            json={"actual_intent": "greeting"},
+            headers=self.headers(),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()["allowed_intents"],
+            [
+                "add_to_cart",
+                "cancel_order",
+                "show_orders",
+                "track_order",
+                "view_cart",
+            ],
+        )
+
     def test_record_cannot_be_reviewed_twice(self):
         url = f"/api/v1/assistant/training/{self.record_id}/review"
         first = self.client.post(
@@ -88,7 +106,7 @@ class TrainingReviewRouteTests(unittest.TestCase):
         )
         second = self.client.post(
             url,
-            json={"actual_intent": "greeting"},
+            json={"actual_intent": "track_order"},
             headers=self.headers(),
         )
         self.assertEqual(first.status_code, 200)

@@ -6080,6 +6080,8 @@ Notice that the existing rule-based classifier predicted `show_orders` for all s
 
 These records belong to the previously held-out guest batch. Since `cancel_order` already has 22 unique reviewed messages, let's first check whether these six messages duplicate existing reviewed examples.
 
+**Important SQL Query before training:**
+
 Run this SQL:
 
 ```

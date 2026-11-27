@@ -5624,3 +5624,73 @@ ORDER BY created_at DESC;
 Paste the results here, bro.
 
 Then I'll prepare the update SQL and final verification SQL using the actual IDs. **Don't update labels yet!** 😎
+
+
+==================================================================
+
+Perfect brooo! 🔥 All **7 records found (IDs 327–333)**.
+
+### **Step 1/3 – Human label review**
+
+| ID  | Current prediction | Correct label |
+| --- | ------------------ | ------------- |
+| 327 | unknown            | show_orders   |
+| 328 | show_orders        | show_orders   |
+| 329 | show_orders        | show_orders   |
+| 330 | show_orders        | show_orders   |
+| 331 | show_orders        | show_orders   |
+| 332 | unknown            | show_orders   |
+| 333 | show_products      | show_orders   |
+
+All seven messages ask about orders the user has already placed, so the correct supervised label is `show_orders`—not `show_products` or `unknown`.
+
+### **Step 2/3 – Approve and update**
+
+Run:
+
+```
+UPDATE public.assistant_training_logs
+SET
+    actual_intent = 'show_orders',
+    reviewed_at = NOW()
+WHERE id IN (327, 328, 329, 330, 331, 332, 333)
+  AND actual_intent IS NULL
+RETURNING
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at;
+```
+
+Expected: **7 rows updated**.
+
+### **Step 3/3 – Final verification**
+
+First query:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at
+FROM public.assistant_training_logs
+WHERE id IN (327, 328, 329, 330, 331, 332, 333)
+ORDER BY id;
+```
+
+Second query:
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages
+FROM public.assistant_training_logs
+WHERE actual_intent = 'show_orders'
+GROUP BY actual_intent;
+```
+
+Send both results, bro. Then we'll confirm the five-intent dataset progress and decide the next step. 🚀

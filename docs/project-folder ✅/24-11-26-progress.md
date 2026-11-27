@@ -5264,3 +5264,31 @@ I'll give you six different guest-user messages. You'll submit them through your
 We will not move to `view_cart` until this batch is complete.
 
 Shall we start with the six `add_to_cart` messages, bro?
+
+
+==================================================================
+
+Yessss brooo! 😂🔥 Let's start **Batch 1/3 –&#x20;**`add_to_cart`.
+
+### **Batch 1 – Six new messages**
+
+Submit these six messages through your chatbot:
+
+| S.No. | Message                                           |
+| ----- | ------------------------------------------------- |
+| 1     | Please put this item into my basket.              |
+| 2     | I want to add the selected product to my cart.    |
+| 3     | Add one unit of this product to my shopping cart. |
+| 4     | Can you place this item in my cart?               |
+| 5     | I have selected a product; save it to my cart.    |
+| 6     | Include this product in my cart for purchase.     |
+
+Target: 6 new unique messages
+
+**Our process:**
+
+1. Submit all six through the chatbot.
+2. Share the newly generated Supabase record IDs with me.
+3. I'll give you the three SQL queries: retrieve and verify → approve labels → final verification.
+
+Don't update anything manually yet, bro. One batch at a time! 🚀&#x20;

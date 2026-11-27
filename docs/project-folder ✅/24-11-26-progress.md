@@ -5864,3 +5864,63 @@ Paste the result.
 Then we'll separate historical duplicates from the actual `rule_v4` training candidates and continue the quality audit.
 
 **No deletion, no label changes, no training yet.** We're keeping this clean, bro! 😎
+
+
+==================================================================
+
+BROOO! This result reveals something important. 😎 We caught a dataset-scope issue before training.
+
+### **1. What we discovered**
+
+Your duplicate records come from different model versions:
+
+| Model version | Records in duplicate groups | Treatment             |
+| ------------- | --------------------------- | --------------------- |
+| rule_v1       | 1                           | Historical            |
+| rule_v2       | 3                           | Historical            |
+| rule_v3       | 1                           | Historical            |
+| rule_v4       | 10                          | Initial ML candidates |
+
+For example, `Show my orders` appears seven times, but only six of those records belong to `rule_v4`.
+
+**Important correction:** Our previous five-intent count of 107 included records from older model versions. We must not use that number as the final `rule_v4` training count.
+
+### **2. Next step – Exact rule_v4 dataset count**
+
+Run this SQL:
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages,
+    COUNT(*) - COUNT(DISTINCT LOWER(TRIM(user_message))) AS duplicate_records
+FROM public.assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IN (
+      'add_to_cart',
+      'view_cart',
+      'show_orders',
+      'track_order',
+      'cancel_order'
+  )
+  AND actual_intent IS NOT NULL
+  AND user_message IS NOT NULL
+  AND TRIM(user_message) <> ''
+GROUP BY actual_intent
+ORDER BY actual_intent;
+```
+
+### **3. Why this matters**
+
+Our training dataset must follow these rules:
+
+1. Only `rule_v4` records.
+2. Only the five selected intents.
+3. Only human-reviewed `actual_intent` labels.
+4. Deduplicate during preparation, not in Supabase.
+5. Preserve all other 18 intents and historical records.
+
+Send me the query result. Then we'll establish the exact dataset size before deciding whether it is ready for training.
+
+No deletion, no database modifications, no training yet, bro! 🔥

@@ -5758,3 +5758,50 @@ Paste the results here.
 **Our next sequence:** class distribution → duplicate/conflict audit → dataset quality decision → review both feature-branch PRs → controlled first training run.
 
 And remember: the other 18 intents remain in the database and rule-based chatbot. We are narrowing only the initial ML training scope, bro! 🚀&#x20;
+
+
+==================================================================
+
+BROOOO! 🔥 Excellent. The first audit is complete.
+1. Audit results
+Intent	Reviewed records	Unique messages	Duplicate records	Status
+add_to_cart	13	12	1	Good
+cancel_order	22	22	0	Good
+show_orders	23	17	6	Inspect duplicates
+track_order	33	32	1	Good
+view_cart	16	14	2	Inspect duplicates
+Total	107	97	10	
+
+Important: duplicates are not automatically bad. If identical messages have the same correct label, we can deduplicate them during ML preparation without deleting database records.
+
+Also, track_order now has 33 reviewed records, so we're using your latest database result rather than the earlier count.
+2. Next audit – Find duplicate messages and label conflicts
+Run this SQL:
+SELECT
+    LOWER(TRIM(user_message)) AS normalized_message,
+    COUNT(*) AS occurrence_count,
+    COUNT(DISTINCT actual_intent) AS distinct_label_count,
+    ARRAY_AGG(id ORDER BY id) AS record_ids,
+    ARRAY_AGG(DISTINCT actual_intent) AS assigned_labels
+FROM public.assistant_training_logs
+WHERE actual_intent IN (
+    'add_to_cart',
+    'view_cart',
+    'show_orders',
+    'track_order',
+    'cancel_order'
+)
+AND user_message IS NOT NULL
+AND TRIM(user_message) <> ''
+GROUP BY LOWER(TRIM(user_message))
+HAVING COUNT(*) > 1
+ORDER BY distinct_label_count DESC, occurrence_count DESC;
+
+
+What we're checking:
+- occurrence_count: How many times the same normalized message appears.
+- distinct_label_count: Whether the same message has conflicting labels.
+- record_ids: Which database records are involved.
+- assigned_labels: Which labels were assigned.
+Don't delete or update anything yet.
+Send me the results. Then we'll decide whether the duplicates are safe and proceed to the final quality audit, bro! 🚀

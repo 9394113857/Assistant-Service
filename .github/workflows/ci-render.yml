@@ -2,67 +2,26 @@
 # 🚀 CI - ASSISTANT SERVICE
 # ============================================================
 #
-# Repository:
-# 9394113857/Assistant-Service
-#
-# JOB 1: CI VALIDATION
-#   - Every branch push, including new feature branches
-#   - Every pull request
-#   - Every version tag push (v*)
-#   - Manual execution
-#   - Install Python dependencies
-#   - Verify required project files
-#   - Validate Python syntax
-#   - Run automated unit tests after syntax validation
-#
-# JOB 2: DOCKER RELEASE
-#   - Runs only for version tags (v*)
-#   - Runs only after successful CI validation
-#   - Builds and verifies the exact tagged source
-#   - Pushes the exact version tag and updates the latest tag
-#   - Updates latest only after the versioned image push succeeds
-#
-# NOTIFICATIONS:
-#   - CI validation emails report validation success/failure only.
-#   - Docker emails are sent only after both image pushes succeed.
+# CI validates the same Python runtime used by the Docker image.
+# Production Dockerfile uses Python 3.11.
 #
 # ============================================================
 
 name: 🚀 CI - Backend Assistant Service Render
 
-# ============================================================
-# WORKFLOW TRIGGERS
-# ============================================================
-
 on:
-  # Run CI for pushes to every branch, including newly created
-  # feature branches, main, bugfix branches, and release branches.
   push:
     branches:
       - "**"
-    # Also run CI when a version tag is pushed.
     tags:
       - "v*"
-
-  # Validate pull requests targeting any branch.
   pull_request:
     branches:
       - "**"
-
-  # Allow a user to start CI manually from GitHub Actions.
   workflow_dispatch:
 
-# ============================================================
-# WORKFLOW PERMISSIONS
-# ============================================================
-
 permissions:
-  # Read access is sufficient to checkout the repository.
   contents: read
-
-# ============================================================
-# JOB 1: CI VALIDATION
-# ============================================================
 
 jobs:
   ci:
@@ -70,102 +29,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # --------------------------------------------------------
-      # STEP 1: CHECKOUT SOURCE
-      # --------------------------------------------------------
       - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      # --------------------------------------------------------
-      # STEP 2: SETUP PYTHON
-      # --------------------------------------------------------
-      - name: 🐍 Setup Python
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          # Keep this aligned with the application's supported
-          # Python runtime and its requirements.
-          python-version: "3.14"
+          python-version: "3.11"
           cache: pip
 
-      # --------------------------------------------------------
-      # STEP 3: INSTALL PROJECT DEPENDENCIES
-      # --------------------------------------------------------
       - name: 📚 Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          echo "✅ Dependencies installed successfully"
+          python -m pip install -r requirements.txt
+          echo "Dependencies installed successfully"
 
-      # --------------------------------------------------------
-      # STEP 4: VERIFY REQUIRED PROJECT FILES
-      # --------------------------------------------------------
       - name: 📁 Verify Project Structure
         run: |
           test -f requirements.txt
           test -f Dockerfile
           test -f run.py
           test -f wsgi.py
-          echo "✅ Required project files found"
+          echo "Required project files found"
 
-      # --------------------------------------------------------
-      # STEP 5: VALIDATE PYTHON SYNTAX
-      # --------------------------------------------------------
-      # Parse all repository Python files without importing or
-      # executing application code. Virtual environments, Git
-      # metadata, and Python cache directories are excluded.
-      # Run the regression suite after syntax validation.
-      # --------------------------------------------------------
       - name: 🔍 Validate Python Syntax
         run: |
           python - <<'PY'
           import ast
           from pathlib import Path
 
-          excluded = {
-              ".git",
-              ".venv",
-              "venv",
-              "__pycache__",
-          }
-
+          excluded = {".git", ".venv", "venv", "__pycache__"}
           files = [
-              path
-              for path in Path(".").rglob("*.py")
+              path for path in Path(".").rglob("*.py")
               if not any(part in excluded for part in path.parts)
           ]
-
           if not files:
-              raise SystemExit("❌ No Python files found!")
+              raise SystemExit("No Python files found")
 
           errors = []
-
           for file in files:
               try:
                   ast.parse(file.read_text(encoding="utf-8"))
-                  print(f"✅ {file}")
               except (SyntaxError, UnicodeError, OSError) as exc:
                   errors.append(f"{file}: {exc}")
 
           if errors:
-              print("\n❌ Python syntax errors found:")
-              for error in errors:
-                  print(error)
-              raise SystemExit(1)
-
-          print(f"\n✅ Validated {len(files)} Python files")
+              raise SystemExit("\n".join(errors))
+          print(f"Validated {len(files)} Python files")
           PY
 
-      # --------------------------------------------------------
-      # STEP 6: RUN AUTOMATED UNIT TESTS
-      # --------------------------------------------------------
       - name: 🧪 Run Unit Tests
-        run: |
-          python -m unittest discover -s tests -v
-          echo "✅ Unit tests passed"
+        run: python -m unittest discover -s tests -v
 
-      # --------------------------------------------------------
-      # CI validation notification: dependencies, required files,
-      # Python syntax, and automated unit tests.
       - name: 📧 CI Validation Success Email
         if: success()
         uses: dawidd6/action-send-mail@v3
@@ -175,18 +90,17 @@ jobs:
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ CI PASSED | Assistant Service | ${{ github.ref_name }}"
+          subject: "CI PASSED | Assistant Service | ${{ github.ref_name }}"
           to: ${{ secrets.MAIL_TO }}
           cc: ${{ secrets.MAIL_CC }}
           from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
           body: |
-            ✅ ASSISTANT SERVICE CI VALIDATION PASSED
+            ASSISTANT SERVICE CI VALIDATION PASSED
             Repository: ${{ github.repository }}
             Commit: ${{ github.sha }}
             Ref: ${{ github.ref }}
-            Actor: ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Checks: dependency installation, required files, Python syntax, and unit tests.
+            Checks: Python 3.11 dependency installation, required files, syntax, and unit tests.
             This is not a Docker release or deployment confirmation.
 
       - name: 📧 CI Validation Failure Email
@@ -198,225 +112,14 @@ jobs:
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 CI FAILED | Assistant Service | ${{ github.ref_name }}"
+          subject: "CI FAILED | Assistant Service | ${{ github.ref_name }}"
           to: ${{ secrets.MAIL_TO }}
           cc: ${{ secrets.MAIL_CC }}
           from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
           body: |
-            🚨 ASSISTANT SERVICE CI VALIDATION FAILED
+            ASSISTANT SERVICE CI VALIDATION FAILED
             Repository: ${{ github.repository }}
             Commit: ${{ github.sha }}
             Ref: ${{ github.ref }}
-            Actor: ${{ github.actor }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             Inspect the failed validation step in GitHub Actions.
-
-      # --------------------------------------------------------
-      # STEP 6: FINAL CI SUCCESS LOG
-      # --------------------------------------------------------
-      - name: ✅ CI Completed Successfully
-        if: success()
-        run: |
-          echo "======================================"
-          echo "🚀 ASSISTANT SERVICE CI SUCCESS"
-          echo "======================================"
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Commit: $GITHUB_SHA"
-          echo "Reference: $GITHUB_REF"
-          echo "Dependencies: SUCCESS"
-          echo "Required Files: SUCCESS"
-          echo "Python Syntax: SUCCESS"
-          echo "Unit Tests: SUCCESS"
-          echo "CI Status: SUCCESS"
-          echo "======================================"
-
-  # ============================================================
-  # JOB 2: DOCKER BUILD AND PUSH
-  # ============================================================
-  docker-release:
-    name: 🐳 Docker Build and Push
-    runs-on: ubuntu-latest
-
-    # Docker must wait for CI to finish successfully.
-    needs:
-      - ci
-
-    # Only version tags trigger a Docker release.
-    # Branch pushes, pull requests, and manual branch runs skip it.
-    if: >-
-      startsWith(github.ref, 'refs/tags/v')
-      && needs.ci.result == 'success'
-
-    env:
-      # Docker Hub repository name.
-      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
-      # Preserve the exact Git tag, for example v1.0.5.
-      IMAGE_TAG: ${{ github.ref_name }}
-
-    steps:
-      # --------------------------------------------------------
-      # STEP 1: CHECKOUT THE TAGGED SOURCE
-      # --------------------------------------------------------
-      - name: 📦 Checkout Tagged Release
-        uses: actions/checkout@v4
-        with:
-          # Explicitly checkout the exact tag that triggered CI.
-          ref: ${{ github.ref }}
-          fetch-depth: 0
-
-      # --------------------------------------------------------
-      # STEP 2: DISPLAY RELEASE INFORMATION
-      # --------------------------------------------------------
-      - name: 🏷️ Display Release Information
-        run: |
-          echo "======================================"
-          echo "🚀 ASSISTANT SERVICE DOCKER RELEASE"
-          echo "======================================"
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Version: $IMAGE_TAG"
-          echo "Commit: $GITHUB_SHA"
-          echo "Docker Image: $DOCKER_IMAGE:$IMAGE_TAG"
-          echo "======================================"
-
-      # --------------------------------------------------------
-      # STEP 3: GENERATE LIVE DEPLOYMENT BUILD METADATA
-      # --------------------------------------------------------
-      - name: 🧾 Generate Deployment Build Metadata
-        shell: bash
-        env:
-          IMAGE_TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          export BUILD_TIME_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          export BUILD_TIME_IST=$(TZ='Asia/Kolkata' date +'%Y-%m-%d %H:%M:%S IST')
-          python - <<'PY'
-          import json
-          import os
-
-          info = {
-              "version": os.environ["IMAGE_TAG"],
-              "commit": os.environ["GITHUB_SHA"],
-              "branch": "main",
-              "build_time_utc": os.environ["BUILD_TIME_UTC"],
-              "build_time_ist": os.environ["BUILD_TIME_IST"],
-          }
-          with open("build_info.json", "w", encoding="utf-8") as output:
-              json.dump(info, output, indent=2)
-              output.write("\n")
-          print(json.dumps(info, indent=2))
-          PY
-
-      # --------------------------------------------------------
-      # STEP 3: BUILD THE VERSIONED DOCKER IMAGE
-      # --------------------------------------------------------
-      # Build the immutable version tag; publish latest only after
-      # the exact version tag has been pushed successfully.
-      - name: 🏗️ Build Docker Image
-        run: |
-          docker build -t "$DOCKER_IMAGE:$IMAGE_TAG" .
-          echo "✅ Docker image built successfully"
-
-      # --------------------------------------------------------
-      # STEP 4: VERIFY THE BUILT IMAGE
-      # --------------------------------------------------------
-      - name: 🔍 Verify Docker Image
-        run: |
-          docker image inspect "$DOCKER_IMAGE:$IMAGE_TAG"
-          echo "✅ Docker image verified: $DOCKER_IMAGE:$IMAGE_TAG"
-
-      # --------------------------------------------------------
-      # STEP 5: LOGIN TO DOCKER HUB
-      # --------------------------------------------------------
-      - name: 🔐 Docker Hub Login
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # --------------------------------------------------------
-      # STEP 6: PUSH THE EXACT VERSION TAG
-      # --------------------------------------------------------
-      # Example: Git tag v1.0.5 publishes both:
-      # assistant-service:v1.0.5 (immutable release reference)
-      # assistant-service:latest (Render deployment reference)
-      - name: 📤 Push Version Image
-        run: |
-          docker push "$DOCKER_IMAGE:$IMAGE_TAG"
-          echo "✅ Published version: $DOCKER_IMAGE:$IMAGE_TAG"
-
-      # --------------------------------------------------------
-      # STEP 7: UPDATE THE MOVING LATEST TAG
-      # --------------------------------------------------------
-      # Render's image-backed deploy hook redeploys the image
-      # reference configured in the Render service. Keep that
-      # reference set to assistant-service:latest.
-      # Publish latest only after the versioned image push succeeds.
-      - name: 🏷️ Tag And Push Latest Image
-        run: |
-          docker tag "$DOCKER_IMAGE:$IMAGE_TAG" "$DOCKER_IMAGE:latest"
-          docker push "$DOCKER_IMAGE:latest"
-          echo "✅ Updated deployment image: $DOCKER_IMAGE:latest"
-
-      # --------------------------------------------------------
-      # STEP 9: FINAL DOCKER RELEASE SUCCESS LOG
-      # --------------------------------------------------------
-      - name: 🎉 Docker Release Completed
-        if: success()
-        run: |
-          echo "======================================"
-          echo "🚀 ASSISTANT SERVICE RELEASE SUCCESS"
-          echo "======================================"
-          echo "Version: $IMAGE_TAG"
-          echo "Published Version Image: $DOCKER_IMAGE:$IMAGE_TAG"
-          echo "Published Deployment Image: $DOCKER_IMAGE:latest"
-          echo "Build metadata: build_info.json included in image"
-          echo "Docker Build: SUCCESS"
-          echo "Version Push: SUCCESS"
-          echo "Latest Push: SUCCESS"
-          echo "Release Status: SUCCESS"
-          echo "======================================"
-
-      - name: 📧 Docker Release Success Email
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🐳 DOCKER RELEASE SUCCESS | Assistant Service | ${{ github.ref_name }}"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🐳 ASSISTANT SERVICE DOCKER RELEASE SUCCESS
-            Version: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Version image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:${{ github.ref_name }}
-            Deployment image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service:latest
-            Registry: https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Both version and latest image pushes succeeded.
-            This confirms publishing only, not Render deployment.
-
-      - name: 📧 Docker Release Failure Email
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 DOCKER RELEASE FAILED | Assistant Service | ${{ github.ref_name }}"
-          to: ${{ secrets.MAIL_TO }}
-          cc: ${{ secrets.MAIL_CC }}
-          from: Assistant Service <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            🚨 ASSISTANT SERVICE DOCKER RELEASE FAILED
-            Version: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Inspect Docker build, verification, registry login, and push logs.

@@ -5694,3 +5694,65 @@ GROUP BY actual_intent;
 ```
 
 Send both results, bro. Then we'll confirm the five-intent dataset progress and decide the next step. 🚀
+
+
+==================================================================
+
+BROOOOO! 😂🔥 **Batch 3 completed successfully!**
+
+All seven records are correctly reviewed and verified.
+
+### **1. Five-intent dataset progress**
+
+Initial collection target reached
+
+| S.No. | Intent         | Reviewed records | Unique messages | Target |
+| ----- | -------------- | ---------------- | --------------- | ------ |
+| 1     | `add_to_cart`  | 13               | 12              | 10     |
+| 2     | `view_cart`    | 16               | 14              | 10     |
+| 3     | `show_orders`  | 23               | 17              | 10     |
+| 4     | `track_order`  | 22               | 22              | 10     |
+| 5     | `cancel_order` | 22               | 22              | 10     |
+|       | **Total**      | **96**           | **87**          | **50** |
+
+All five intents have reached the initial unique-message target.
+
+### **2. What's next?**
+
+No more message collection for now. Our next activity is a **five-intent dataset quality audit**.
+
+We need to check:
+
+- Are all five classes correctly represented?
+- Are there duplicate messages?
+- Do any identical messages have conflicting human labels?
+- Are there pending or empty records?
+- Is the dataset suitable for the initial training attempt?
+
+### **3. First audit SQL – Class distribution**
+
+Run this in Supabase:
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages,
+    COUNT(*) - COUNT(DISTINCT LOWER(TRIM(user_message))) AS duplicate_records
+FROM public.assistant_training_logs
+WHERE actual_intent IN (
+    'add_to_cart',
+    'view_cart',
+    'show_orders',
+    'track_order',
+    'cancel_order'
+)
+GROUP BY actual_intent
+ORDER BY actual_intent;
+```
+
+Paste the results here.
+
+**Our next sequence:** class distribution → duplicate/conflict audit → dataset quality decision → review both feature-branch PRs → controlled first training run.
+
+And remember: the other 18 intents remain in the database and rule-based chatbot. We are narrowing only the initial ML training scope, bro! 🚀&#x20;

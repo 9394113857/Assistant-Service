@@ -6148,6 +6148,8 @@ Why?
 
 ### **3. Final focused duplicate/conflict check**
 
+**Important SQL Query almost before training:**
+
 Run this SQL:
 
 ```

@@ -4758,7 +4758,46 @@ ORDER BY actual_intent;
 
 Share the output, bro. We'll decide the next batch based on actual dataset numbers. 💪
 
+==================================================================
 
+Yesss brooo! 😂🔥 Welcome back!
+
+We continue exactly where we stopped: **Step 1 – Duplicate Analysis** of our 122 reviewed `rule_v4` records.
+
+### **Step 1: Find exact duplicate messages**
+
+Run this SQL in Supabase SQL Editor:
+
+```
+
+SELECT
+    LOWER(TRIM(user_message)) AS normalized_message,
+    COUNT(*) AS record_count,
+    COUNT(DISTINCT actual_intent) AS distinct_intent_count,
+    STRING_AGG(
+        DISTINCT actual_intent,
+        ', ' ORDER BY actual_intent
+    ) AS intents,
+    ARRAY_AGG(id ORDER BY id) AS record_ids
+FROM assistant_training_logs
+WHERE actual_intent IS NOT NULL
+  AND model_version = 'rule_v4'
+GROUP BY LOWER(TRIM(user_message))
+HAVING COUNT(*) > 1
+ORDER BY record_count DESC, normalized_message;
+
+```
+
+**What are we checking?**
+
+- `record_count`: How many times the same message appears.
+- `distinct_intent_count`: Whether duplicate messages have conflicting labels.
+- `intents`: Which labels were assigned.
+- `record_ids`: Which database rows are involved.
+
+**Important:** We are only identifying duplicates. We will not delete or modify any records.
+
+Run it and share the output, bro. Then we'll decide the next step. 💪
 
 
 

@@ -5327,3 +5327,80 @@ ORDER BY created_at DESC;
 **What I need from you:** Paste the SQL result here, including all six `id` values.
 
 Then I'll prepare Step 2 (label approval and update) and Step 3 (final verification) using your actual IDs. Don't update anything yet, bro! 😎&#x20;
+
+
+==================================================================
+
+Excellent bro! 🔥 We found all **6 records (IDs 314–319)**.
+
+### **Step 1/3 – Retrieval results**
+
+
+
+6 records found
+
+Labels pending
+
+
+
+| ID  | Current prediction | Correct label to review |
+| --- | ------------------ | ----------------------- |
+| 314 | add_to_cart        | add_to_cart             |
+| 315 | add_to_cart        | add_to_cart             |
+| 316 | add_to_cart        | add_to_cart             |
+| 317 | view_cart          | add_to_cart             |
+| 318 | view_cart          | add_to_cart             |
+| 319 | view_cart          | add_to_cart             |
+
+Important observation: **3 of the 6 messages were predicted as&#x20;**`view_cart`, but their wording clearly requests adding a product. For supervised training, we should use the human-reviewed label `add_to_cart`, not the model's prediction.
+
+### **Step 2/3 – Approve labels and update**
+
+Run this SQL:
+
+```
+UPDATE public.assistant_training_logs
+SET
+    actual_intent = 'add_to_cart',
+    reviewed_at = NOW()
+WHERE id IN (314, 315, 316, 317, 318, 319)
+  AND actual_intent IS NULL
+RETURNING
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at;
+```
+
+Expected: **6 rows updated**, all with `actual_intent = add_to_cart`.
+
+### **Step 3/3 – Final verification**
+
+After Step 2, run:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at
+FROM public.assistant_training_logs
+WHERE id IN (314, 315, 316, 317, 318, 319)
+ORDER BY id;
+```
+
+Also verify the updated class count:
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages
+FROM public.assistant_training_logs
+WHERE actual_intent = 'add_to_cart'
+GROUP BY actual_intent;
+```
+
+**Send me both results**, bro. Once verified, we'll mark Batch 1 complete and move to the next `add_to_cart` batch. No merging or training yet! 🚀

@@ -6108,3 +6108,73 @@ ORDER BY p.id;
 We want to distinguish genuinely new training examples from repeated messages. We won't automatically approve predictions or change labels.
 
 Send me the result, bro. Then we'll make the final decision on these six records and continue the quality audit. 🚀
+
+
+==================================================================
+
+BROOOOO! 😂🔥 Excellent. This is exactly what we wanted to discover.
+
+### **1. Pending duplicate audit – Complete**
+
+All 6 are exact duplicates
+
+| Pending ID | Already reviewed ID | Existing label | Decision          |
+| ---------- | ------------------- | -------------- | ----------------- |
+| 273        | 263                 | cancel_order   | Exclude duplicate |
+| 274        | 264                 | cancel_order   | Exclude duplicate |
+| 275        | 265                 | cancel_order   | Exclude duplicate |
+| 279        | 268                 | cancel_order   | Exclude duplicate |
+| 281        | 270                 | cancel_order   | Exclude duplicate |
+| 283        | 272                 | cancel_order   | Exclude duplicate |
+
+**Decision: Do not update these six records.**
+
+Why?
+
+- Their exact messages already have reviewed examples.
+- The existing examples have the correct `cancel_order` labels.
+- They add no new unique training examples.
+- Keep all six records in Supabase for historical auditing.
+
+### **2. Current training dataset**
+
+| Metric                             | Count |
+| ---------------------------------- | ----- |
+| Reviewed `rule_v4` records         | 80    |
+| Unique messages                    | 74    |
+| Duplicate records                  | 6     |
+| Pending duplicate records excluded | 6     |
+| Selected intents                   | 5     |
+
+### **3. Final focused duplicate/conflict check**
+
+Run this SQL:
+
+```
+SELECT
+    LOWER(TRIM(user_message)) AS normalized_message,
+    COUNT(*) AS occurrences,
+    COUNT(DISTINCT actual_intent) AS label_count,
+    ARRAY_AGG(id ORDER BY id) AS record_ids,
+    ARRAY_AGG(DISTINCT actual_intent) AS labels
+FROM public.assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IN (
+      'add_to_cart',
+      'view_cart',
+      'show_orders',
+      'track_order',
+      'cancel_order'
+  )
+  AND user_message IS NOT NULL
+  AND TRIM(user_message) <> ''
+GROUP BY LOWER(TRIM(user_message))
+HAVING COUNT(*) > 1
+ORDER BY occurrences DESC;
+```
+
+We expect six duplicate records across the selected classes, with no conflicting labels.
+
+After you share this result, we'll finish the database audit and move to reviewing the two feature-branch PRs before the first controlled training run.
+
+No database changes needed now, bro! 🚀

@@ -5731,6 +5731,8 @@ We need to check:
 
 ### **3. First audit SQL – Class distribution**
 
+**Importnat SQL Query before First Five Intents to train and coomit on assistant servc ewith retained update dmodel:**
+
 Run this in Supabase:
 
 ```

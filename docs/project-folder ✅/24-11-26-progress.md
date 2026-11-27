@@ -6248,3 +6248,59 @@ That does not remove the other 18 rule-based chatbot intents, but it prevents ad
 My recommendation is **yes**. That keeps the broader chatbot and future training-data collection flexible.
 
 After that decision, we'll finish the PR reviews and prepare the first controlled training run. 🚀
+
+
+==================================================================
+
+BROOOOO! 😂🔥 Final decision confirmed:
+
+The administrator review API will accept all 23 intents, but the initial ML training pipeline will use only these five:
+1. add_to_cart
+2. view_cart
+3. show_orders
+4. track_order
+5. cancel_order
+This is the right separation: the chatbot keeps its full 23-intent capability, while the first ML model stays narrowly scoped.
+
+Next step: fix Assistant-Service PR #11 before merging. We must not restrict future human reviews to only five labels.
+6. Changes committed to both feature branches
+Assistant-Service PR #11
+Updated
+
+Open PR #11
+- Review API supports all 23 intents.
+- Added a test covering all 23 labels.
+- Five-intent ML artifact restriction remains.
+- Documentation updated.
+  
+  ML Pipeline PR #6
+  CI passed
+  
+  Open PR #6
+- Explicit rule_v4 source filter added.
+- Latest pipeline CI run #6 succeeded.
+- Verified dataset snapshot documented.
+
+7. Current project status
+Activity	Status
+Five-intent data collection	Complete
+Dataset duplicate audit	Complete
+Full 23-intent review support	Committed
+ML source-version filter	Committed
+Pipeline CI	Passed
+Latest Service CI	Await verification
+PR merging	Not done
+First ML training	Not started
+Production deployment	Not done
+
+8. What happens next?
+Next: verify Assistant-Service PR #11 CI. Then review both PRs together before merging.
+
+We will not start training until both changes are validated and merged with your approval.
+
+One important expectation, bro: 74 unique messages across five classes is enough to attempt our initial minimum-data training gate, but it is still a small dataset. We must evaluate the results honestly rather than assume 70% accuracy will be achieved.
+
+No more SQL or message collection needed right now. 😎
+
+
+

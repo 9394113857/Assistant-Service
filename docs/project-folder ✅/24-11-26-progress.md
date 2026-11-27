@@ -4967,6 +4967,8 @@ What we've established: Our 122 reviewed records have no exact-message label con
 Step 5 – Check class balance
 Now we need to see which intents have enough examples and which are still weak.
 
+**Important SQL Query:**
+
 Run:
 
 SELECT

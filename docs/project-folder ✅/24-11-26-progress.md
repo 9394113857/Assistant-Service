@@ -5442,3 +5442,46 @@ Submit these seven messages through your chatbot:
 After submission, share the record IDs/results. I'll prepare the SQL retrieval, approval and verification steps using those IDs.
 
 **And yes bro:** we'll keep this conversation focused on the five-intent ML preparation, preserve all other rule-based intents, and work in small batches so we don't lose track of progress. 😎&#x20;
+
+
+==================================================================
+
+Ayyyy broooo! 😂🔥 Let's retrieve Batch 2 now.
+
+### **Step 1/3 – Retrieve and verify&#x20;**`view_cart`
+
+**Important SQL Query:**
+
+Run this SQL in Supabase:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at,
+    user_id
+FROM public.assistant_training_logs
+WHERE LOWER(TRIM(user_message)) IN (
+    LOWER('Show me everything currently in my shopping cart.'),
+    LOWER('What items have I added to my basket?'),
+    LOWER('Display my cart contents, please.'),
+    LOWER('Can I see the products waiting in my cart?'),
+    LOWER('List all items I have selected for purchase.'),
+    LOWER('Open my shopping basket.'),
+    LOWER('How many products are currently in my cart?')
+)
+ORDER BY created_at DESC;
+```
+
+**Send me the result with all seven IDs.**
+
+Then I'll give you:
+
+1. Step 2 – approve and update `actual_intent = 'view_cart'`.
+2. Step 3 – verify all seven saved labels and the updated unique-message count.
+
+Don't update anything yet, bro. One step at a time! 🚀

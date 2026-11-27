@@ -5239,3 +5239,28 @@ The pipeline will report `INSUFFICIENT_DATA` until we collect those 20 additiona
 **Our first milestone is now properly scoped and the code changes are committed.** We haven't pretended a model is trained when the data isn't ready.
 
 Bro, this is the right way to build it: small scope, automated checks, safe commits, and no accidental production changes. 💪
+
+
+==================================================================
+
+Bro, our **exact next step is to collect 20 more unique training messages**. No coding or merging yet.
+
+We need only these three batches:
+
+| Order | Intent        | Current | Need |
+| ----- | ------------- | ------- | ---- |
+| 1     | `add_to_cart` | 4       | 6    |
+| 2     | `view_cart`   | 3       | 7    |
+| 3     | `show_orders` | 3       | 7    |
+
+**Step 1: Start with&#x20;**`add_to_cart`**&#x20;(6 new messages).**
+
+I'll give you six different guest-user messages. You'll submit them through your chatbot, retrieve their Supabase IDs, and we'll do our usual three SQL stages:
+
+1. Retrieve and verify.
+2. Approve labels and update.
+3. Verify saved labels.
+
+We will not move to `view_cart` until this batch is complete.
+
+Shall we start with the six `add_to_cart` messages, bro?

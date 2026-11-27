@@ -6055,3 +6055,54 @@ We'll inspect those six messages and decide whether they should be human-reviewe
 - We will keep the initial ML scope limited to five classes.
 
 Send me those six rows, bro. We're almost at the final dataset audit! 🚀
+
+
+==================================================================
+
+Ahaaaa bro! 🔥 We found the six pending records.
+
+### **1. Human intent review**
+
+All six messages clearly express an intention to cancel an existing order.
+
+| ID  | Message                                     | Correct intent |
+| --- | ------------------------------------------- | -------------- |
+| 273 | I want to cancel an order I placed          | `cancel_order` |
+| 274 | Please stop my order from being processed   | `cancel_order` |
+| 275 | I don't want the order I just placed        | `cancel_order` |
+| 279 | Please don't send my order                  | `cancel_order` |
+| 281 | Is it possible to call off my recent order? | `cancel_order` |
+| 283 | How do I request cancellation of an order?  | `cancel_order` |
+
+Notice that the existing rule-based classifier predicted `show_orders` for all six. These are useful examples of classification errors.
+
+### **2. One more check before approving**
+
+These records belong to the previously held-out guest batch. Since `cancel_order` already has 22 unique reviewed messages, let's first check whether these six messages duplicate existing reviewed examples.
+
+Run this SQL:
+
+```
+SELECT
+    p.id AS pending_id,
+    p.user_message AS pending_message,
+    COUNT(r.id) AS matching_reviewed_records,
+    ARRAY_AGG(r.id ORDER BY r.id)
+        FILTER (WHERE r.id IS NOT NULL) AS matching_record_ids,
+    ARRAY_AGG(DISTINCT r.actual_intent)
+        FILTER (WHERE r.actual_intent IS NOT NULL) AS existing_labels
+FROM public.assistant_training_logs p
+LEFT JOIN public.assistant_training_logs r
+    ON LOWER(TRIM(p.user_message)) = LOWER(TRIM(r.user_message))
+    AND r.model_version = 'rule_v4'
+    AND r.actual_intent IS NOT NULL
+WHERE p.id IN (273, 274, 275, 279, 281, 283)
+GROUP BY p.id, p.user_message
+ORDER BY p.id;
+```
+
+**Why this check?**
+
+We want to distinguish genuinely new training examples from repeated messages. We won't automatically approve predictions or change labels.
+
+Send me the result, bro. Then we'll make the final decision on these six records and continue the quality audit. 🚀

@@ -6318,3 +6318,16 @@ Just one clarification before I touch anything: when you say “shut down for to
 - Or shut down the live Assistant-Service Render application too?
 
 I recommend the first option. We should keep the chatbot live and avoid unnecessary production downtime.
+
+
+==================================================================
+
+Got it brooo! 😄 Today's plan:
+
+1. **Manual ML training run** — trigger exactly once.
+2. **Verify training** — check dataset counts, five intent classes, accuracy, report and generated `.pkl` artifact.
+3. **Verify Assistant-Service** — confirm it loads the new model correctly.
+4. **Chatbot testing** — test the real chatbot flow for add to cart, view cart, show orders, track order and cancel order. We'll use safe test data; no real orders, payments or cancellations without your approval.
+5. **Stop testing for today** — no more manual training or test runs today. The next scheduled training remains tomorrow morning.
+
+**One clarification:** By “shut down”, do you mean stop today's testing only and leave the live chatbot running? I recommend that, so production stays available.

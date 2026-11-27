@@ -3,6 +3,7 @@ import unittest
 from app import create_app
 from app.extensions import db
 from app.models.assistant_training_log import AssistantTrainingLog
+from app.services.ml_intent_scope import SUPPORTED_REVIEW_INTENTS
 from flask_jwt_extended import create_access_token
 
 
@@ -71,6 +72,26 @@ class TrainingReviewRouteTests(unittest.TestCase):
         self.assertEqual(saved.reviewer_user_id, 42)
         self.assertIsNotNone(saved.reviewed_at)
 
+    def test_admin_can_review_all_supported_assistant_intents(self):
+        for intent in SUPPORTED_REVIEW_INTENTS:
+            record = AssistantTrainingLog(
+                user_id=None,
+                user_message=f"test message for {intent}",
+                predicted_intent="unknown",
+                confidence_score=0.0,
+                model_version="rule_v4",
+            )
+            db.session.add(record)
+            db.session.commit()
+
+            response = self.client.post(
+                f"/api/v1/assistant/training/{record.id}/review",
+                json={"actual_intent": intent},
+                headers=self.headers(),
+            )
+            self.assertEqual(response.status_code, 200, intent)
+            self.assertEqual(response.get_json()["actual_intent"], intent)
+
     def test_review_rejects_unknown_intent(self):
         response = self.client.post(
             f"/api/v1/assistant/training/{self.record_id}/review",
@@ -78,23 +99,9 @@ class TrainingReviewRouteTests(unittest.TestCase):
             headers=self.headers(),
         )
         self.assertEqual(response.status_code, 400)
-
-    def test_review_rejects_intents_outside_initial_ml_scope(self):
-        response = self.client.post(
-            f"/api/v1/assistant/training/{self.record_id}/review",
-            json={"actual_intent": "greeting"},
-            headers=self.headers(),
-        )
-        self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.get_json()["allowed_intents"],
-            [
-                "add_to_cart",
-                "cancel_order",
-                "show_orders",
-                "track_order",
-                "view_cart",
-            ],
+            sorted(SUPPORTED_REVIEW_INTENTS),
         )
 
     def test_record_cannot_be_reviewed_twice(self):

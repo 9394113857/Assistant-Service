@@ -5485,3 +5485,75 @@ Then I'll give you:
 2. Step 3 – verify all seven saved labels and the updated unique-message count.
 
 Don't update anything yet, bro. One step at a time! 🚀
+
+
+==================================================================
+
+Niceeee bro! 🔥 All **7 records found (IDs 320–326)**.
+
+### **Step 1/3 – Review the labels**
+
+| ID  | Current prediction | Human-reviewed label |
+| --- | ------------------ | -------------------- |
+| 320 | view_cart          | view_cart            |
+| 321 | view_cart          | view_cart            |
+| 322 | view_cart          | view_cart            |
+| 323 | view_cart          | view_cart            |
+| 324 | show_products      | view_cart            |
+| 325 | view_cart          | view_cart            |
+| 326 | view_cart          | view_cart            |
+
+Important: ID **324** was predicted as `show_products`, but the user explicitly asks to see items already selected in their cart. So the correct label is `view_cart`.
+
+### **Step 2/3 – Approve and update**
+
+Run this SQL:
+
+```
+UPDATE public.assistant_training_logs
+SET
+    actual_intent = 'view_cart',
+    reviewed_at = NOW()
+WHERE id IN (320, 321, 322, 323, 324, 325, 326)
+  AND actual_intent IS NULL
+RETURNING
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at;
+```
+
+Expected: **7 rows updated**.
+
+### **Step 3/3 – Final verification**
+
+After the update, run this:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    actual_intent,
+    reviewed_at
+FROM public.assistant_training_logs
+WHERE id IN (320, 321, 322, 323, 324, 325, 326)
+ORDER BY id;
+```
+
+Then check the overall `view_cart` count:
+
+```
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages
+FROM public.assistant_training_logs
+WHERE actual_intent = 'view_cart'
+GROUP BY actual_intent;
+```
+
+**Send me both results.** We'll confirm Batch 2 and update our progress before moving to `show_orders`.
+
+And yes bro, I'll keep the workflow self-contained here: exact SQL, actual IDs, verification, and progress tracking. No assumptions about successful updates, no premature training, and no merging PRs without your approval. 😎

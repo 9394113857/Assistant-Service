@@ -4894,3 +4894,58 @@ ORDER BY id;
 
 
 Share the output, bro. We'll identify which records are useful, duplicates, or need human review. No updates or deletions yet.
+
+
+==================================================================
+
+Ahaaa bro! 😄 We found the reason for all 11 pending records.
+
+### **Step 3 results – Pending record investigation**
+
+| IDs     | Finding                                                         | Recommended action    |
+| ------- | --------------------------------------------------------------- | --------------------- |
+| 273–276 | First guest cancellation batch, already reviewed in IDs 263–272 | Duplicate submissions |
+| 277     | Exact duplicate of ID 276                                       | Exclude from training |
+| 278–283 | Repeated guest cancellation batch                               | Duplicate submissions |
+
+**Important observations:**
+
+- IDs 263–272 were already reviewed as `cancel_order`.
+- IDs 273–283 are repeated submissions of that same guest batch.
+- ID 276 and 277 are identical messages.
+- These 11 records are not new independent examples.
+
+
+
+Recommendation
+
+&#x20;Keep all 11 database records for audit, but exclude them from the training dataset. No need to label them just to increase the count.
+
+
+
+### **Next: Verify there are no conflicting labels**
+
+Let's check whether the same normalized message has ever been assigned different actual intents across the reviewed `rule_v4` dataset.
+
+```
+
+SELECT
+    LOWER(TRIM(user_message)) AS normalized_message,
+    COUNT(DISTINCT actual_intent) AS distinct_intent_count,
+    STRING_AGG(
+        DISTINCT actual_intent,
+        ', ' ORDER BY actual_intent
+    ) AS intents,
+    ARRAY_AGG(id ORDER BY id) AS record_ids
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+GROUP BY LOWER(TRIM(user_message))
+HAVING COUNT(DISTINCT actual_intent) > 1
+ORDER BY normalized_message;
+
+```
+
+**Expected result:** Zero rows is good. It means no exact normalized message has conflicting human-reviewed labels.
+
+Run it and share the result, bro. 💪

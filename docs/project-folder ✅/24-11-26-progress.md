@@ -5292,3 +5292,38 @@ Target: 6 new unique messages
 3. I'll give you the three SQL queries: retrieve and verify → approve labels → final verification.
 
 Don't update anything manually yet, bro. One batch at a time! 🚀&#x20;
+
+
+==================================================================
+
+Superrr bro! 🔥 Batch 1 submission complete.
+
+**Next: Step 1/3 – Retrieve and verify the six Supabase records.**
+
+Run this SQL in Supabase SQL Editor:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at,
+    user_id
+FROM public.assistant_training_logs
+WHERE LOWER(TRIM(user_message)) IN (
+    LOWER('Please put this item into my basket.'),
+    LOWER('I want to add the selected product to my cart.'),
+    LOWER('Add one unit of this product to my shopping cart.'),
+    LOWER('Can you place this item in my cart?'),
+    LOWER('I have selected a product; save it to my cart.'),
+    LOWER('Include this product in my cart for purchase.')
+)
+ORDER BY created_at DESC;
+```
+
+**What I need from you:** Paste the SQL result here, including all six `id` values.
+
+Then I'll prepare Step 2 (label approval and update) and Step 3 (final verification) using your actual IDs. Don't update anything yet, bro! 😎&#x20;

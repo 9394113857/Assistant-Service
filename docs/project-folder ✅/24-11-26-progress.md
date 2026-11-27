@@ -4860,3 +4860,37 @@ WHERE model_version = 'rule_v4';
 
 Run this and share the output. Then we'll check label consistency. 💪
 
+==================================================================
+
+
+Perfect bro! 💪
+Step 2 results
+No empty messages
+Check	Result	Status
+Total records	133	—
+Reviewed records	122	Good
+Pending records	11	Needs checking
+Empty messages	0	Good
+
+Simple explanation: We have 122 reviewed records and 11 pending records. All 133 records contain a message.
+
+Those 11 pending records may include the repeated test submissions we noticed earlier. We should inspect them before deciding whether to include them in training.
+Step 3 – Identify the 11 pending records
+Run this SQL:
+
+SELECT
+    id,
+    user_id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    model_version,
+    created_at
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NULL
+ORDER BY id;
+
+
+
+Share the output, bro. We'll identify which records are useful, duplicates, or need human review. No updates or deletions yet.

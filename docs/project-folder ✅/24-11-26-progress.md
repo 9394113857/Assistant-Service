@@ -4949,3 +4949,36 @@ ORDER BY normalized_message;
 **Expected result:** Zero rows is good. It means no exact normalized message has conflicting human-reviewed labels.
 
 Run it and share the result, bro. 💪
+
+
+==================================================================
+
+
+Superrr brooo! 🔥❤️
+No conflicting labels found
+Step 4 – Data quality results so far
+#	Validation	Result	Status
+1	Exact duplicate analysis	6 duplicate groups	Identified
+2	Empty messages	0	Pass
+3	Pending records	11	Identified as repeated submissions
+4	Conflicting labels	0	Pass
+
+What we've established: Our 122 reviewed records have no exact-message label conflicts. The 11 pending rows are repeated submissions and should be excluded from training.
+Step 5 – Check class balance
+Now we need to see which intents have enough examples and which are still weak.
+
+Run:
+
+SELECT
+    actual_intent,
+    COUNT(*) AS reviewed_records,
+    COUNT(DISTINCT LOWER(TRIM(user_message))) AS unique_messages
+FROM assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND actual_intent IS NOT NULL
+GROUP BY actual_intent
+ORDER BY unique_messages ASC, actual_intent;
+
+
+
+Share the result. We'll identify the weakest classes and decide what additional examples to collect before training TF-IDF + Logistic Regression. 💪

@@ -1,8 +1,35 @@
-"""Initial supervised-ML intent allowlist.
+"""Intent scopes for the assistant and its initial supervised-ML model.
 
-This scope applies only to the first ML model. The existing rule-based assistant
-continues to support its other intents until later phases explicitly expand ML.
+The runtime/review taxonomy is broader than the first ML model. Keep these
+allowlists separate so collecting labels for the full assistant never expands
+the classes accepted by the initial model artifact.
 """
+
+SUPPORTED_REVIEW_INTENTS = (
+    "add_to_cart",
+    "assistant_about",
+    "assistant_identity",
+    "cancel_order",
+    "cheaper_product",
+    "clarification",
+    "costliest_product",
+    "general_knowledge",
+    "greeting",
+    "product_advice",
+    "product_alternatives",
+    "product_category",
+    "product_compare",
+    "product_detail",
+    "product_price",
+    "product_stock",
+    "recommend_product",
+    "show_orders",
+    "show_products",
+    "track_order",
+    "unknown",
+    "view_cart",
+    "weather",
+)
 
 INITIAL_ML_INTENTS = (
     "add_to_cart",
@@ -14,7 +41,7 @@ INITIAL_ML_INTENTS = (
 
 
 def model_matches_initial_scope(candidate):
-    """Return True only when a loaded sklearn pipeline has exactly these classes."""
+    """Return True only when a loaded sklearn pipeline has exactly the five ML classes."""
     classes = getattr(candidate, "classes_", None)
 
     if classes is None:

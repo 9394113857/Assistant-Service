@@ -6001,3 +6001,57 @@ We want to ensure that:
 After this, we'll perform the final training-data quality checks and review the two feature-branch PRs before authorizing the first training run.
 
 **We're getting close, bro! But we won't call the model training-ready until the final checks pass.** 🚀
+
+
+==================================================================
+
+BROOO! 🔥 Good. We found **6 pending records** and zero empty messages.
+
+But one important SQL detail needs attention before we proceed.
+
+### **1. Understand your result**
+
+| Metric                      | Result | Meaning                                                   |
+| --------------------------- | ------ | --------------------------------------------------------- |
+| Pending target predictions  | 6      | Predicted one of our five intents, but not human-reviewed |
+| Reviewed target predictions | 57     | Predicted one of the five intents and already reviewed    |
+| Empty messages              | 0      | Excellent                                                 |
+
+**Important:** These counts use `predicted_intent`, not `actual_intent`. So the 57 reviewed records are not the complete supervised dataset. Our previous `rule_v4` count of 80 reviewed records across the five actual labels remains the relevant count.
+
+### **2. Next – Inspect the six pending records**
+
+Run this SQL:
+
+```
+SELECT
+    id,
+    user_message,
+    predicted_intent,
+    confidence_score,
+    actual_intent,
+    model_version,
+    created_at
+FROM public.assistant_training_logs
+WHERE model_version = 'rule_v4'
+  AND predicted_intent IN (
+      'add_to_cart',
+      'view_cart',
+      'show_orders',
+      'track_order',
+      'cancel_order'
+  )
+  AND actual_intent IS NULL
+ORDER BY id;
+```
+
+### **3. What we'll do**
+
+We'll inspect those six messages and decide whether they should be human-reviewed or remain excluded from training.
+
+- We will not automatically approve predicted labels.
+- We will not delete pending records.
+- We will preserve all 18 other intents.
+- We will keep the initial ML scope limited to five classes.
+
+Send me those six rows, bro. We're almost at the final dataset audit! 🚀

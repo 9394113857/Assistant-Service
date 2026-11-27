@@ -5924,3 +5924,80 @@ Our training dataset must follow these rules:
 Send me the query result. Then we'll establish the exact dataset size before deciding whether it is ready for training.
 
 No deletion, no database modifications, no training yet, bro! 🔥
+
+
+==================================================================
+
+BROOOOO! 🔥 Now we have the correct `rule_v4` dataset numbers!
+
+### **1. Confirmed five-intent dataset**
+
+All five classes meet the minimum target
+
+| S.No. | Intent         | Reviewed records | Unique messages | Duplicates | Minimum target |
+| ----- | -------------- | ---------------- | --------------- | ---------- | -------------- |
+| 1     | `add_to_cart`  | 11               | 10              | 1          | 10             |
+| 2     | `view_cart`    | 10               | 10              | 0          | 10             |
+| 3     | `show_orders`  | 15               | 10              | 5          | 10             |
+| 4     | `track_order`  | 22               | 22              | 0          | 10             |
+| 5     | `cancel_order` | 22               | 22              | 0          | 10             |
+|       | **Total**      | **80**           | **74**          | **6**      | **50**         |
+
+**What this means:**
+
+- 80 reviewed records.
+- 74 unique messages after exact-text deduplication.
+- All five classes have at least 10 unique messages.
+- Six duplicate records can be excluded during ML preparation.
+- Nothing needs to be deleted from Supabase.
+
+### **2. Next step – Check pending records**
+
+Before training, let's check whether any relevant `rule_v4` records are still awaiting human review.
+
+Run this SQL:
+
+```
+SELECT
+    COUNT(*) FILTER (
+        WHERE predicted_intent IN (
+            'add_to_cart',
+            'view_cart',
+            'show_orders',
+            'track_order',
+            'cancel_order'
+        )
+        AND actual_intent IS NULL
+    ) AS pending_target_records,
+
+    COUNT(*) FILTER (
+        WHERE predicted_intent IN (
+            'add_to_cart',
+            'view_cart',
+            'show_orders',
+            'track_order',
+            'cancel_order'
+        )
+        AND actual_intent IS NOT NULL
+    ) AS reviewed_target_records,
+
+    COUNT(*) FILTER (
+        WHERE user_message IS NULL
+           OR TRIM(user_message) = ''
+    ) AS empty_messages
+
+FROM public.assistant_training_logs
+WHERE model_version = 'rule_v4';
+```
+
+### **3. Why this check?**
+
+We want to ensure that:
+
+- Unreviewed predictions are not accidentally used as training labels.
+- Human-reviewed labels remain the source of truth.
+- Empty messages don't enter the training dataset.
+
+After this, we'll perform the final training-data quality checks and review the two feature-branch PRs before authorizing the first training run.
+
+**We're getting close, bro! But we won't call the model training-ready until the final checks pass.** 🚀

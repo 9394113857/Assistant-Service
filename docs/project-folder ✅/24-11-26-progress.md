@@ -5775,7 +5775,12 @@ Total	107	97	10
 Important: duplicates are not automatically bad. If identical messages have the same correct label, we can deduplicate them during ML preparation without deleting database records.
 
 Also, track_order now has 33 reviewed records, so we're using your latest database result rather than the earlier count.
+
+
 2. Next audit – Find duplicate messages and label conflicts
+
+**Important SQL Query before training and we are inspecting:**
+
 Run this SQL:
 SELECT
     LOWER(TRIM(user_message)) AS normalized_message,

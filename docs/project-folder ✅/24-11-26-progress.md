@@ -5810,3 +5810,57 @@ What we're checking:
 - assigned_labels: Which labels were assigned.
 Don't delete or update anything yet.
 Send me the results. Then we'll decide whether the duplicates are safe and proceed to the final quality audit, bro! 🚀
+
+
+==================================================================
+
+BROOOO! 🔥 This is a good result!
+
+### **1. Duplicate audit results**
+
+Zero label conflicts
+
+| Duplicate message                | Occurrences | Assigned label | Result     |
+| -------------------------------- | ----------- | -------------- | ---------- |
+| `show my orders`                 | 7           | show_orders    | Same label |
+| `add this product to my cart`    | 2           | add_to_cart    | Same label |
+| `how many items are in my cart?` | 2           | view_cart      | Same label |
+| `show my cart`                   | 2           | view_cart      | Same label |
+| `track my order`                 | 2           | track_order    | Same label |
+
+**What this means:**
+
+- Five duplicate groups found.
+- Zero conflicting labels.
+- Ten extra duplicate records.
+- No records need to be deleted.
+- We can deduplicate during ML data preparation.
+
+### **2. Important next check – Which records belong to&#x20;**`rule_v4`**?**
+
+Some duplicate IDs are older records, such as 18, 65, 69 and 80. Our initial ML training scope is based on reviewed `rule_v4` records, so we must not accidentally mix older training history into this dataset.
+
+Run this SQL:
+
+```
+SELECT
+    id,
+    user_message,
+    actual_intent,
+    model_version,
+    user_id,
+    created_at
+FROM public.assistant_training_logs
+WHERE id IN (
+    18, 65, 69, 80,
+    167, 182, 183, 184, 185, 186, 200,
+    198, 210, 199, 84
+)
+ORDER BY id;
+```
+
+Paste the result.
+
+Then we'll separate historical duplicates from the actual `rule_v4` training candidates and continue the quality audit.
+
+**No deletion, no label changes, no training yet.** We're keeping this clean, bro! 😎

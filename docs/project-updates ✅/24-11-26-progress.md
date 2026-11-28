@@ -6793,3 +6793,91 @@ Assistant-Service PR creation	Failed — repository clone
 Production deployment	Not performed
 
 Don't rerun training yet, bro. We may only need to fix the repository credentials and publish an already-trained model. That would avoid wasting another training run. ❤️
+
+
+==================================================================
+
+Bro, this page is **GitHub Apps**, and `No GitHub Apps` is completely okay. 😊
+
+You do **not** need to create a GitHub App for our current fix. We need a **Personal Access Token (PAT)** so the ML pipeline can access your `Assistant-Service` repository.
+
+A GitHub App and a Personal Access Token are different things:
+
+- **GitHub App:** an integration/application registered with GitHub.
+- **Personal Access Token:** a credential that lets a workflow access repositories with your permitted account permissions.
+
+### **Step 1 — Open the correct page**
+
+Click this direct link:
+
+[GitHub Fine-grained Personal Access Tokens](https://github.com/settings/personal-access-tokens?utm_source=chatgpt.com)
+
+### **Step 2 — Generate a token**
+
+Click **Generate new token** and use these settings:
+
+| Setting             | Value                                          |
+| ------------------- | ---------------------------------------------- |
+| Token name          | `Assistant-ML-Pipeline-Access`                 |
+| Description         | `Allow ML pipeline to create model update PRs` |
+| Resource owner      | Your GitHub account                            |
+| Expiration          | 90 days                                        |
+| Repository access   | Only select repositories                       |
+| Selected repository | `Assistant-Service`                            |
+
+Under Repository permissions, select:
+
+| Permission    | Access              |
+| ------------- | ------------------- |
+| Contents      | Read and write      |
+| Pull requests | Read and write      |
+| Metadata      | Read-only (default) |
+
+These permissions allow the pipeline to read the repository, create a model-update branch and open a PR.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://docs.github.com\&sz=32)
+
+GitHub Docs+2
+
+
+
+### **Step 3 — Generate and save it**
+
+1. Click **Generate token**.
+2. GitHub displays the generated token.
+3. Click the copy icon immediately.
+4. Save it temporarily in a secure password manager.
+
+
+
+Important
+
+&#x20;GitHub displays the token only once. If you leave the page without saving it, you'll need to generate another one. Never send the token in this chat or screenshots.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://docs.github.com\&sz=32)
+
+GitHub Docs+1
+
+
+
+### **Step 4 — Add it to the ML pipeline**
+
+Open:
+
+[assistant-ml-pipeline → Actions Secrets](https://github.com/9394113857/assistant-ml-pipeline/settings/secrets/actions?utm_source=chatgpt.com)
+
+Find or create this repository secret:
+
+| Secret name            | Value                            |
+| ---------------------- | -------------------------------- |
+| `ASSISTANT_REPO_TOKEN` | Paste your newly generated token |
+
+Also verify the other secret:
+
+| Secret name           | Value                          |
+| --------------------- | ------------------------------ |
+| `ASSISTANT_REPO_NAME` | `9394113857/Assistant-Service` |
+
+**One important thing, bro:** We should verify the earlier training logs from run #98 before triggering another training run. The clone failed, but training may already have completed.
+
+First generate the token and tell me when it is saved. Don't paste its value here. ❤️

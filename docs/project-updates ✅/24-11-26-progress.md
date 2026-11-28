@@ -7403,3 +7403,25 @@ Not merged yet
 I won't claim success until GitHub confirms the merge commits.
 
 Our next checkpoint: verify PR #14 and PR #9 are merged. Then we'll start SQL Step 1 and the complete 23-intent investigation. 😎
+
+==================================================================
+
+BROOOOO! 🔥🔥 Both are officially merged! I verified the GitHub PR status.
+Both PRs merged
+Repository	PR	Status	Merge commit
+Assistant-Service	#14	Merged	2cc49a3
+assistant-ml-pipeline	#9	Merged	a381a7a
+
+Both merged on 28 November 2026. Automatic PR merge after successful CI is now in main for both repositories. 🚀
+Next: SQL / intent investigation — Step 1
+We'll keep this read-only. No inserts, updates, deletes, migrations, or training runs.
+
+Our order:
+1. Inspect the actual database schema for chat_messages and assistant_training_logs.
+2. Inspect recent chat records, separating guest and authenticated sessions.
+3. Inspect training records, labels, predictions, confidence, review status and duplicates.
+4. Compare the database with the 23-intent runtime and ML taxonomy.
+5. Build the 23-intent gap matrix before deciding what to implement.
+One important point: I found no connected Supabase SQL-query tool in this workspace, so I won't pretend I can query your Supabase database directly.
+
+Let's start with the schema. Open your Supabase project → SQL Editor → New query. I'll give you the first read-only query to run, then we'll inspect its results together, one step at a time. 💪

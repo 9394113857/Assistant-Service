@@ -2,7 +2,8 @@ import re
 
 """Rule-based intent detection for the web assistant.
 
-Keep intent names aligned with app/services/intent_registry.py.
+Keep intent names aligned with app/services/intent_registry.py. The returned
+model-version value identifies the rule set that produced the prediction.
 """
 
 

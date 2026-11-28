@@ -59,6 +59,8 @@ on:
 permissions:
   # Read access is sufficient to checkout the repository.
   contents: read
+  # Allow the post-CI job to request GitHub native auto-merge.
+  pull-requests: write
 
 # ============================================================
 # JOB 1: CI VALIDATION
@@ -420,3 +422,39 @@ jobs:
             Image: ${{ secrets.DOCKERHUB_USERNAME }}/assistant-service
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             Inspect Docker build, verification, registry login, and push logs.
+
+
+  # ============================================================
+  # JOB 3: REQUEST AUTOMATIC PR MERGE AFTER CI PASSES
+  # ============================================================
+  # Runs only after CI succeeds for a non-draft PR targeting main.
+  # GitHub still enforces configured reviews and required checks.
+  # A stale PR head is rejected to avoid merging outdated code.
+  # ============================================================
+  enable-auto-merge:
+    name: 🤖 Enable Auto-Merge After CI
+    runs-on: ubuntu-latest
+    needs:
+      - ci
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.base.ref == 'main'
+      && github.event.pull_request.draft == false
+      && needs.ci.result == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: 📥 Checkout Repository for GitHub CLI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: 🤖 Enable Squash Auto-Merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr merge "$PR_NUMBER" --auto --squash --match-head-commit "$PR_HEAD_SHA"
+          echo "✅ Auto-merge requested after successful Assistant-Service CI."

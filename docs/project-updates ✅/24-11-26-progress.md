@@ -7120,3 +7120,114 @@ After this release and testing, I recommend:
 5. Add a post-deployment chatbot smoke-test workflow.
 
 **Your immediate action:** check the latest release version, create the next version tag on `main` at `197704c` if that is still the current HEAD, and push it. Then share the CI/Docker/CD results here. We'll verify the deployment before starting chatbot regression tests. ❤️&#x20;
+
+
+==================================================================
+
+Brooooo 😄❤️ Here is the complete sequence from starting Guest testing until finishing Login testing. Follow this order exactly.
+
+## **Phase 1 — Guest testing (10 test cases)**
+
+**Step 1:** Open your Angular Ecommerce application.
+
+**Step 2:** Refresh the chatbot page once.
+
+**Step 3:** Make sure you are NOT logged in. Continue as Guest.
+
+**Step 4:** Run these 10 test cases.
+
+| S.No. | Test case                             | Expected result                 |
+| ----- | ------------------------------------- | ------------------------------- |
+| 1     | Send `Hi` or `Hello`                  | Greeting response               |
+| 2     | Add a product to cart                 | Login required                  |
+| 3     | View cart                             | Login required                  |
+| 4     | Show my orders                        | Login required                  |
+| 5     | Track my order                        | Login required                  |
+| 6     | Cancel my order                       | Login required                  |
+| 7     | Check quantity restoration            | Login required; no cancellation |
+| 8     | Request another login-required action | Login/register prompt           |
+| 9     | Send an unknown message               | Proper fallback response        |
+| 10    | Repeat greeting and unknown message   | Consistent responses            |
+
+**Step 5:** Record the actual chatbot responses and mark each test Pass or Fail.
+
+**Step 6:** Submit all 10 Guest test results to me.
+
+Guest testing complete
+
+## **Phase 2 — Switch to Login (same page)**
+
+After submitting Guest results:
+
+1. **Do not refresh the chatbot page manually.**
+2. Do not close the browser tab.
+3. Do not clear cookies or browser storage.
+4. Open the application's Login option.
+5. Log in using your test credentials.
+6. After successful login, return to the chatbot on the same page.
+7. Confirm that the chatbot is now using your authenticated session.
+
+If the application automatically redirects or reloads after login, that's okay.
+
+## **Phase 3 — Logged-in testing (same 10 test cases)**
+
+Now run the same 10 test cases again.
+
+| S.No. | Test case                             | Expected result                                          |
+| ----- | ------------------------------------- | -------------------------------------------------------- |
+| 1     | Send `Hi` or `Hello`                  | Greeting response                                        |
+| 2     | Add a product to cart                 | Product added successfully                               |
+| 3     | View cart                             | Your actual cart items displayed                         |
+| 4     | Show my orders                        | Your orders displayed                                    |
+| 5     | Track my order                        | Correct order status                                     |
+| 6     | Cancel my order                       | Ask for confirmation first                               |
+| 7     | Check quantity restoration            | Display whether stock was restored                       |
+| 8     | Request another authenticated action  | Correct authenticated response                           |
+| 9     | Send an unknown message               | Proper fallback response                                 |
+| 10    | Repeat an important cart/order action | Consistent response without unintended duplicate actions |
+
+**Important:** For cancellation, use only a test order. Don't confirm cancellation unless you're ready to cancel it.
+
+**Step 2:** Record all actual responses and Pass/Fail results.
+
+**Step 3:** Submit the 10 Login test results to me.
+
+Both testing phases complete
+
+## **Phase 4 — What we'll do after both submissions**
+
+| S.No. | Activity               | Purpose                       |
+| ----- | ---------------------- | ----------------------------- |
+| 1     | Compare Guest vs Login | Verify both session types     |
+| 2     | Review failures        | Identify bugs                 |
+| 3     | Fix issues             | Work on feature branches      |
+| 4     | Run CI                 | Validate code                 |
+| 5     | Review and merge       | Safely update main            |
+| 6     | Deploy                 | Release approved changes      |
+| 7     | Final regression test  | Verify the chatbot end to end |
+
+## **Your immediate checklist**
+
+**Testing progress**
+
+## **0/8**
+
+Open Angular Ecommerce and refresh once
+
+Run all 10 Guest test cases
+
+Record Pass/Fail and actual responses
+
+Submit Guest results to ChatGPT
+
+Stay on the same page and log in
+
+Run the same 10 Login test cases
+
+Record Pass/Fail and actual responses
+
+Submit Login results to ChatGPT
+
+**That's it bro!** First Guest 10 → submit → same page login → Login 10 → submit. Then we review everything together.
+
+Now go enjoy your lunch! 😂❤️

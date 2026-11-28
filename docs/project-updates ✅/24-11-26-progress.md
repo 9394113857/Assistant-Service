@@ -7425,3 +7425,93 @@ Our order:
 One important point: I found no connected Supabase SQL-query tool in this workspace, so I won't pretend I can query your Supabase database directly.
 
 Let's start with the schema. Open your Supabase project → SQL Editor → New query. I'll give you the first read-only query to run, then we'll inspect its results together, one step at a time. 💪
+
+
+==================================================================
+
+BROOO! 🔥 Now we'll secure both main branches before creating the common feature branches.
+
+Our target architecture:
+Two repositories — one consistent workflow
+Assistant-Service
+main protected
+
+assistant-ml-pipeline
+main protected
+
+
+
+Same feature branch name in both repos
+feature/...
+One shared naming convention
+PR → CI → Automatic squash merge
+
+Protected main
+Both repositories
+Only validated changes should reach main
+
+1. Configure main protection in Assistant-Service
+Open:
+
+Assistant-Service → Settings → Branches
+1. Go to Branch protection rules.
+2. Click Add branch protection rule.
+3. Branch name pattern:
+main
+
+4. Configure the following options.
+2. Recommended protection settings
+GitHub setting	What to select
+Require a pull request before merging	ON
+Require approvals	OFF for now
+Require status checks to pass	ON  — configure after verifying exact CI check name
+Require conversation resolution	ON
+Require signed commits	OFF for now
+Require linear history	ON, if compatible with your merge configuration
+Allow force pushes	OFF
+Allow deletions	OFF
+Do not allow bypassing the above settings	Prefer ON, after verifying your automation can satisfy the rules
+
+Important: Keep approvals OFF for now because you want automatic merging after CI succeeds without waiting for another person to approve. Your CI workflow already requests native GitHub auto-merge after successful validation.
+
+GitHub's documentation: Managing branch protection rules and About protected branches.
+3. Repeat the same settings in assistant-ml-pipeline
+assistant-ml-pipeline → Settings → Branches
+
+Use exactly the same branch pattern:
+
+main
+
+Apply the same protection configuration.
+
+Consistency goal
+ Both repositories should have equivalent protection policies.
+4. Important: CI status checks
+Don't select random status checks.
+
+Your repositories have different CI workflows:
+- Assistant-Service: CI - Backend Assistant Service Render
+- assistant-ml-pipeline: Assistant ML Pipeline CI
+Before selecting required checks, we should verify the exact check/job names reported by GitHub. If we require the wrong check, PRs can remain blocked even when CI succeeds.
+
+Also, don't enable a deployment-success requirement yet: your Render CD is a separate release workflow, not the PR CI gate.
+5. Common feature branch naming convention
+This is the next thing we'll implement after main protection is configured.
+
+Example: whenever we work on guest-session isolation, create the same branch name in both repositories:
+Assistant-Service	assistant-ml-pipeline
+feature/guest-session-isolation	feature/guest-session-isolation
+feature/cart-chat-integration	feature/cart-chat-integration
+feature/intent-taxonomy-alignment	feature/intent-taxonomy-alignment
+feature/training-data-cleanup	feature/training-data-cleanup
+
+The branches are separate Git branches in separate repositories, but their names will match.
+
+One clarification: We should not create a permanent alias branch that replaces main. main remains the production/integration branch in both repos. We'll create matching feature branches from each repository's latest main whenever a task requires changes in both.
+
+Your first action
+Please configure the main branch protection in Assistant-Service first.
+
+When you reach the settings screen, tell me what options you see or share a screenshot. I'll guide you through the exact selections before we repeat it in the ML repository.
+
+Don't create the common feature branches yet. We'll do that after both main branches are protected. 💪

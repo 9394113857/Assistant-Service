@@ -6409,3 +6409,57 @@ I recommend keeping the automatic PR and CI safety gate rather than allowing eve
 One question, bro: **shall we start by inspecting the current&#x20;**`assistant-ml-pipeline`**&#x20;main code and prepare the Supabase fix on a feature branch?**
 
 
+
+==================================================================
+
+Brooo, I checked the actual **#97 workflow logs**, not just the red status. We have a clear direction now.
+
+**The failure is still the same Supabase read-only check**:
+
+```
+RuntimeError: PostgreSQL did not confirm a read-only connection.
+TRAINING_ROWS=0
+MODEL_SAVED=false
+```
+
+Python 3.11 setup, dependency installation, and all four training-scope tests passed. The workflow reached the database connection check and stopped before fetching any training rows.
+
+So we should fix the safety mechanism—not weaken it, not change your Supabase data, and definitely not keep retrying training.
+
+### **Track A — first fix started**
+
+
+
+Feature branch created
+
+`fix/supabase-read-only-connection`
+
+
+
+I made these changes directly on that feature branch:
+
+| File                                  | Change                                                                                                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `train.py`                            | Replaced the startup connection option with `SET TRANSACTION READ ONLY` and explicit PostgreSQL verification at the start of every transaction |
+| `tests/test_read_only_transaction.py` | Added tests to verify read-only enforcement and reject a read-write transaction                                                                |
+
+**Important:** Training still uses only the five approved intents and human-reviewed `actual_intent` labels. The database remains protected; no Supabase rows or production files were changed.
+
+CI running
+
+[View feature-branch CI run #11](https://github.com/9394113857/assistant-ml-pipeline/actions/runs/46124924588?utm_source=chatgpt.com)
+
+### **What happens next**
+
+1. Wait for CI #11 to pass.
+2. Review the change and open a PR into `main`.
+3. After merging, run a **read-only Supabase connection validation first**—not model training.
+4. Only when that validation succeeds, authorize one manual training run.
+5. If training succeeds and the model passes quality checks, the pipeline creates an Assistant-Service model-update PR. We review and merge it separately.
+
+The daily schedule remains untouched. No more training retries for now.
+
+**We're fixing the foundation first, bro.** ❤️
+
+
+

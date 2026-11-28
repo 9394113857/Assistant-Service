@@ -7285,6 +7285,8 @@ Bro, let's start with `chat_messages` and `assistant_training_logs` in Assistant
 
 ==================================================================
 
+**Important Topic on GitHub Auto-merge:**
+
 Brooooo welcome back! 😄🔥
 
 Understood. We'll handle automatic PR merging first, before SQL or the 23-intent investigation.

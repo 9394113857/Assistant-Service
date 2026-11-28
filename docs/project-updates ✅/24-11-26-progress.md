@@ -6463,3 +6463,40 @@ The daily schedule remains untouched. No more training retries for now.
 
 
 
+
+
+==================================================================
+
+BROOOOO! 🎉❤️ **Track A's code fix is now merged into&#x20;**`main`**, and CI #14 passed!**
+
+**PR #7 — Supabase read-only connection fix**
+
+Merged
+
+- Branch: `fix/supabase-read-only-connection`
+- Main commit: `a9db6c1`
+- CI #11, #12, #13 and #14: passed
+- Production: unchanged
+- ML training: not triggered
+
+  The fix is safely on main.
+
+  [View merged PR #7](https://github.com/9394113857/assistant-ml-pipeline/pull/7?utm_source=chatgpt.com) · [View main CI #14](https://github.com/9394113857/assistant-ml-pipeline/actions/runs/46125346541?utm_source=chatgpt.com)
+
+### **Next: validate Supabase before training**
+
+One important distinction: CI confirms our code and tests pass, but it hasn't yet tested the new SQLAlchemy read-only connection against your actual Supabase database.
+
+Let's use the existing manual diagnostics workflow first.
+
+**Your next action:**
+
+1. Open [Assistant ML Supabase Diagnostics](https://github.com/9394113857/assistant-ml-pipeline/actions/workflows/manual-supabase-db-diagnostics.yml?utm_source=chatgpt.com).
+2. Click **Run workflow** on `main`.
+3. Click the green **Run workflow** button.
+
+This is a read-only diagnostic. It won't train a model or modify database rows.
+
+Send me the result after it finishes. Then we'll verify the exact training connection, and only after that proceed to one controlled training run.
+
+**No repeated failed training runs, bro. One checkpoint at a time.** 🚀

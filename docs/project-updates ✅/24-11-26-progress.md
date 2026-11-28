@@ -7357,3 +7357,49 @@ Waiting for repository setting
 No workflow files have been modified and no PR has been merged yet.
 
 Bro, first enable Allow auto-merge in both repositories and tell me "enabled". Then we'll implement the automation on feature branches, get CI green, and merge those automation PRs safely. After that, we'll continue with the SQL investigation. 😎
+
+==================================================================
+
+Brooooo! 😎🔥 Both repositories now have the automatic-merge changes committed on feature branches, and I've opened the two PRs.
+🤖 Automatic merge PRs created
+1. Assistant-Service
+PR created
+PR #14 — Add automatic PR merge after successful CI
+
+Branch: feature/ci-auto-merge-after-success
+
+Commit: c129981
+
+
+2. Assistant ML Pipeline
+PR created
+PR #9 — Add automatic PR merge after successful CI
+
+Branch: feature/ci-auto-merge-after-success
+
+Commit: 353ab44
+
+
+The new workflow requests GitHub native squash auto-merge only after its own CI validation job succeeds, for non-draft PRs targeting main. It also checks that the PR head SHA has not changed.
+🧪 First CI result
+Both validation jobs passed, but the auto-merge jobs failed because GitHub CLI needed the repository checked out on the runner.
+Fix identified
+This is a workflow setup issue, not a Python test failure. I checked both job logs and identified the exact correction: add a checkout step before invoking gh pr merge.
+5. 🔧 Permission correction
+The first attempt revealed that GITHUB_TOKEN also needed scoped contents: write permission to request the merge. I've corrected both workflows and pushed the updated commits.
+Repository	Latest commit	CI status
+Assistant-Service	b2a81bf	Running
+ML Pipeline	46acf7f	Running
+
+Latest runs:
+- Assistant-Service CI
+- ML Pipeline CI
+6. What happens next?
+1. Both CI workflows must pass.
+2. Their auto-merge jobs will execute.
+3. GitHub will receive the automatic squash-merge request.
+4. We'll verify both PRs actually merged into main.
+Not merged yet
+I won't claim success until GitHub confirms the merge commits.
+
+Our next checkpoint: verify PR #14 and PR #9 are merged. Then we'll start SQL Step 1 and the complete 23-intent investigation. 😎

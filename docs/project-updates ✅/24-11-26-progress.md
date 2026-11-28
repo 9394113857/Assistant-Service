@@ -6741,3 +6741,55 @@ Assistant-Service PR creation	Failed — repository clone
 Production deployment	Not performed
 
 Don't rerun training yet, bro. We may only need to fix the repository credentials and publish an already-trained model. That would avoid wasting another training run. ❤️
+
+
+==================================================================
+
+Ahh bro, we found the next blocker. ❤️ Don't worry — this is not the Supabase connection failure coming back.
+ML Retraining #98 — failure diagnosis
+Failed at Assistant-Service repository clone
+The log says:
+Cloning into 'target_repo'...
+remote: Not Found
+fatal: repository 'https://github.com/***.git/' not found
+
+
+This means the workflow tried to clone the target Assistant-Service repository, but GitHub could not find or authorize that repository URL.
+
+What this tells us:
+- Supabase read-only validation already passed.
+- The workflow failed during the target-repository clone.
+- Training did not reach the model-training stage.
+- No new model artifact or Assistant-Service update PR was produced by this run.
+I checked the actual retrain.yml workflow sequence, and there's an important correction to my initial diagnosis:
+
+The clone step runs AFTER training and model-artifact verification. So the training may actually have succeeded! The failure is likely in publishing the validated model to Assistant-Service.
+What to check now
+Open:
+
+assistant-ml-pipeline → Settings → Secrets and variables → Actions
+
+Check these two secrets without sharing their values here:
+Secret	Expected configuration
+ASSISTANT_REPO_NAME	9394113857/Assistant-Service
+ASSISTANT_REPO_TOKEN	Valid token authorized to access Assistant-Service
+
+For the token, verify it has:
+- Repository access to Assistant-Service.
+- Contents: Read and write.
+- Pull requests: Read and write.
+A wrong repository name or insufficient token access can both cause GitHub to return Not Found.
+Before changing anything, one more check
+Please share the earlier log sections from run #98:
+1. 🚀 Train Five-Intent Assistant Model
+2. 📊 Extract Training Metrics
+3. 🔎 Verify Newly Trained Model
+I want to confirm whether we already have a successfully trained model.
+Stage	Current status
+Supabase connection	Passed
+Model training	Awaiting log verification
+Model artifact	Awaiting log verification
+Assistant-Service PR creation	Failed — repository clone
+Production deployment	Not performed
+
+Don't rerun training yet, bro. We may only need to fix the repository credentials and publish an already-trained model. That would avoid wasting another training run. ❤️

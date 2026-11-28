@@ -7281,3 +7281,77 @@ Next step: Database verification
 **One important rule:** We will not modify database records, cancel orders, update stock, or run migrations during this verification.
 
 Bro, let's start with `chat_messages` and `assistant_training_logs` in Assistant-Service Supabase. We'll verify the actual records first, one step at a time. ❤️
+
+
+==================================================================
+
+Brooooo welcome back! 😄🔥
+
+Understood. We'll handle automatic PR merging first, before SQL or the 23-intent investigation.
+
+Our target behaviour:
+🧑‍💻 Developer creates PR
+
+🧪 All required CI checks run
+All required checks successful
+🤖 Automatically merge PR into main
+
+✅ Verify merge commit on main
+
+Safety rule: Failed checks, pending checks, merge conflicts or missing approvals must never trigger a merge. We will inspect the existing GitHub workflows and branch protection first.
+
+Bro, I checked both repositories directly. We found an important issue before enabling automation. ❤️
+1. Current GitHub status
+Check	Assistant-Service	ML Pipeline
+CI workflow exists	Yes	Yes
+Auto-merge enabled in repository settings	No	No
+Open PR	None	PR #4
+Current PR checks	No open PR	Failed
+Merge conflicts	N/A	Detected
+
+ML Pipeline PR #4: Require complete review audit for ML training data
+
+Its current head commit is ce7cca0. GitHub reports:
+- CI check: failed.
+- Mergeable state: dirty.
+- Merge conflicts: present.
+We must not merge PR #4. It needs investigation and correction first.
+2. First enable GitHub Auto-merge
+GitHub currently reports allow_auto_merge: false for both repositories. I cannot change this repository setting through the available connection.
+
+Please enable it manually:
+
+Assistant-Service
+
+https://github.com/9394113857/Assistant-Service/settings
+
+ML Pipeline
+
+https://github.com/9394113857/assistant-ml-pipeline/settings
+
+For each repository:
+1. Open Settings → General.
+2. Scroll to Pull Requests.
+3. Enable Allow auto-merge.
+4. Save if GitHub asks.
+3. Automation we will implement
+After enabling that setting, we'll create a feature branch and PR to add automatic merge handling to both CI workflows.
+🤖 Expected behaviour
+1. Developer opens a feature PR targeting main.
+2. GitHub Actions runs CI.
+3. All required checks must succeed.
+4. Automation enables GitHub auto-merge.
+5. GitHub merges when all required conditions are satisfied.
+6. Verify the resulting commit on main.
+
+Protection rules:
+- Failed CI → no merge.
+- Pending CI → wait.
+- Merge conflict → no merge.
+- Required approval missing → wait.
+- Successful required checks and approvals → merge automatically.
+4. Our immediate status
+Waiting for repository setting
+No workflow files have been modified and no PR has been merged yet.
+
+Bro, first enable Allow auto-merge in both repositories and tell me "enabled". Then we'll implement the automation on feature branches, get CI green, and merge those automation PRs safely. After that, we'll continue with the SQL investigation. 😎

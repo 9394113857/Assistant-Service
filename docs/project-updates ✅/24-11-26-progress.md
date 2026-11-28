@@ -6331,3 +6331,81 @@ Got it brooo! 😄 Today's plan:
 5. **Stop testing for today** — no more manual training or test runs today. The next scheduled training remains tomorrow morning.
 
 **One clarification:** By “shut down”, do you mean stop today's testing only and leave the live chatbot running? I recommend that, so production stays available.
+
+==================================================================
+
+**28-11-26 work progress**
+
+Brooooo 😄❤️ We have a clear next plan. And yes — your expectation is correct: **the final goal is to see a successful ML training run automatically create a model-update commit/PR in the Assistant-Service repository.** Then we verify that model in Assistant-Service and continue the chatbot work.
+
+But one important distinction: we should not make the pipeline create a commit just to show activity. It should create an update only when a genuinely new model has trained successfully and passed our checks.
+
+## **Where we stand**
+
+| Area                                     | Current status                                           |
+| ---------------------------------------- | -------------------------------------------------------- |
+| Assistant-Service code                   | Merged; we can continue its chatbot development          |
+| ML pipeline code                         | Merged; five-intent training scope is in place           |
+| Training dataset                         | 80 reviewed rows, 74 unique messages across five intents |
+| ML CI                                    | Passing                                                  |
+| Manual training #96                      | Failed at Supabase read-only connection verification     |
+| Scheduled training #97                   | Failed; exact cause still needs log confirmation         |
+| New `.pkl` model                         | Not yet successfully generated                           |
+| Automatic Assistant-Service model update | Not yet demonstrated                                     |
+
+**So the blocker is not the five-intent classification logic. It is getting the pipeline to safely read the reviewed training data from Supabase.**
+
+I checked the actual logs for scheduled run **#97** too. It failed for exactly the same reason as #96:
+
+```
+PostgreSQL did not confirm a read-only connection.
+TRAINING_ROWS=0
+MODEL_SAVED=false
+```
+
+So we have confirmed the blocker. No need to guess or change the training dataset.
+
+## **Our next plan — two tracks**
+
+**Track A — Fix ML pipeline first**
+
+1. Inspect the Supabase connection and read-only verification logic.
+2. Create a feature branch in `assistant-ml-pipeline`.
+3. Fix the connection safely. Do not remove the read-only protection.
+4. Run feature-branch tests and CI.
+5. Run one manual training after the fix is verified.
+6. Confirm the five-intent model is trained, saved and verified.
+
+**Track B — Continue Assistant-Service chatbot development**
+
+We do not need to wait for ML training to work on the chatbot.
+
+1. Inspect the current Assistant-Service main code and chatbot handlers.
+2. Continue guest and authenticated cart flows.
+3. Implement and test cart operations safely.
+4. Then work through checkout, order history, tracking and cancellation.
+5. Keep real orders, payments and cancellations protected from accidental execution.
+
+## **The automatic model-update flow we want**
+
+**Daily scheduled / manual ML training**
+
+**Supabase reviewed data → train → evaluate**
+
+**Verify new&#x20;**`.pkl`**&#x20;model**
+
+**Automatically create Assistant-Service model-update PR**
+
+**Assistant-Service CI → review/approved merge → main**
+
+**Deploy → verify model loaded → chatbot testing**
+
+I recommend keeping the automatic PR and CI safety gate rather than allowing every training run to write directly to `main`. We can enable automatic merging after all required checks pass if you want that level of automation.
+
+## **What I recommend we do first**
+
+**Start with Track A's Supabase connection fix, then work on Track B in parallel.** We won't repeatedly trigger failed training runs, and we won't change production just to force an ML update.
+
+One question, bro: **shall we start by inspecting the current&#x20;**`assistant-ml-pipeline`**&#x20;main code and prepare the Supabase fix on a feature branch?**
+
+

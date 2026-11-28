@@ -7515,3 +7515,44 @@ Please configure the main branch protection in Assistant-Service first.
 When you reach the settings screen, tell me what options you see or share a screenshot. I'll guide you through the exact selections before we repeat it in the ML repository.
 
 Don't create the common feature branches yet. We'll do that after both main branches are protected. 💪
+
+
+==================================================================
+
+Let's configure assistant-ml-pipeline main protection now, brooo! 🔥
+
+Open this directly:
+
+assistant-ml-pipeline → Settings → Branches
+Step 1 — Create branch protection rule
+1. Open Branch protection rules.
+2. Click Add branch protection rule.
+3. Under Branch name pattern, enter:
+main
+
+
+Step 2 — Apply these settings
+Setting	Selection
+Require a pull request before merging	ON
+Required approvals	0
+Dismiss stale approvals	OFF
+Require review from Code Owners	OFF
+Require status checks to pass	ON  — select the verified CI check
+Require branches to be up to date	ON, if compatible with your CI
+Require conversation resolution	ON
+Require signed commits	OFF
+Require linear history	ON, if compatible
+Allow force pushes	OFF
+Allow deletions	OFF
+
+Important: Don't guess the required status-check name. We should verify the exact check reported by Assistant ML Pipeline CI before selecting it.
+Step 3 — Save
+Click Create or Save changes at the bottom.
+
+Target
+ Same protection policy as Assistant-Service.
+Once completed, send me a screenshot or simply reply:
+
+ML main protection enabled
+
+Then we'll verify both repositories and create the matching feature branches from each repository's latest main, using one common naming convention. 🚀

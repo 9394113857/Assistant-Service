@@ -442,7 +442,7 @@ jobs:
       && github.event.pull_request.draft == false
       && needs.ci.result == 'success'
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     steps:
       - name: 📥 Checkout Repository for GitHub CLI

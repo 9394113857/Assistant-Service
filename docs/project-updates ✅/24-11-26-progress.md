@@ -6544,3 +6544,47 @@ CI running
 4. If the SQLAlchemy check passes, then—and only then—run one controlled ML training attempt.
 
 We're not repeating failed training runs, bro. 😎
+
+
+==================================================================
+
+Brooooo! 🎉 **Supabase Diagnostics #4 succeeded!**
+
+
+
+Passed
+
+&#x20;The GitHub Actions diagnostic completed successfully in **9 seconds**.
+
+
+
+That confirms the diagnostic's database connection and its read-only checks passed. But one important distinction: this existing diagnostic uses `psycopg2`; our updated training code uses SQLAlchemy's `create_read_only_engine()` hook.
+
+So we're closer, but **we should not trigger training yet**. We need to validate the exact SQLAlchemy connection path first—without changing Supabase data or production.
+
+I’ve now added the missing validation safely on a feature branch.
+
+**What I changed**
+
+- Branch: `fix/validate-sqlalchemy-readonly-diagnostics`
+- Commit: `2a1bb70`
+- Updated the manual diagnostics workflow to install the pipeline dependencies and test the **same SQLAlchemy read-only engine used by&#x20;**`train.py`.
+- It also runs the training-style `pandas.read_sql()` query, without displaying any message contents or user identifiers.
+- No training, model replacement, database writes, or production changes.
+
+
+
+CI running
+
+&#x20;The feature-branch CI has started: [View CI run #16](https://github.com/9394113857/assistant-ml-pipeline/actions/runs/46126041280?utm_source=chatgpt.com).
+
+
+
+**Next sequence:**
+
+1. Wait for CI #16 to pass.
+2. Create and merge a PR for this diagnostics-only change.
+3. Run Supabase Diagnostics once more on `main`.
+4. If the SQLAlchemy check passes, then—and only then—run one controlled ML training attempt.
+
+We're not repeating failed training runs, bro. 😎
